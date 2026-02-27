@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Agent Page - MatrixMarket</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="upgrade.css">
+    <script src="firebase-online-storage.js"></script>
+    <style>
+        body{margin:0;font-family:"Poppins",sans-serif;background:#0f172a;color:#fff}
+        header{background:rgba(0,0,0,.72);display:flex;justify-content:space-between;align-items:center;padding:14px 18px;position:sticky;top:0;z-index:1000}
+        .logo{font-size:1.4rem;font-weight:800;color:#06b6d4}
+        nav{display:flex;gap:12px;flex-wrap:wrap}nav a{color:#fff;text-decoration:none;font-weight:600}
+
+        .shell{width:min(1160px,100% - 18px);margin:16px auto 26px;display:grid;gap:12px}
+        .hero{background:linear-gradient(135deg,#0f172a,#1e293b,#334155,#06b6d4);border:1px solid rgba(148,163,184,.25);border-radius:16px;padding:20px;display:grid;gap:8px}
+        .hero h1{margin:0;font-size:1.9rem}.hero p{margin:0;color:#dbeafe;max-width:760px}
+        .row{display:flex;gap:8px;flex-wrap:wrap}
+        .btn{border:none;border-radius:10px;padding:9px 12px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;color:#fff;background:linear-gradient(135deg,#06b6d4,#4f46e5)}
+        .btn.alt{background:rgba(30,41,59,.8);border:1px solid rgba(148,163,184,.3)}
+        .btn.warn{background:rgba(245,158,11,.2);border:1px solid rgba(245,158,11,.4);color:#fde68a}
+
+        .grid{display:grid;grid-template-columns:1.1fr .9fr;gap:12px}
+        .card{background:rgba(255,255,255,.06);border:1px solid rgba(148,163,184,.2);border-radius:14px;padding:12px}
+        .card h2,.card h3{margin:0 0 8px;color:#67e8f9}
+        .form{display:grid;gap:8px}
+        input,select,textarea{width:100%;border:1px solid rgba(148,163,184,.25);background:rgba(15,23,42,.75);color:#e2e8f0;border-radius:10px;padding:10px;font:inherit}
+        textarea{min-height:100px;resize:vertical}
+
+        .ticket-list,.notice-list{display:grid;gap:7px;max-height:360px;overflow:auto}
+        .ticket,.notice{border:1px solid rgba(148,163,184,.25);border-radius:10px;background:rgba(2,6,23,.55);padding:8px;display:grid;gap:5px}
+        .ticket-head,.notice-head{display:flex;justify-content:space-between;align-items:flex-start;gap:6px;flex-wrap:wrap}
+        .meta{color:#94a3b8;font-size:.8rem}
+        .badge{display:inline-flex;border-radius:999px;padding:.16rem .48rem;font-size:.72rem;font-weight:700;border:1px solid transparent}
+        .badge.open{color:#fde68a;border-color:rgba(245,158,11,.45);background:rgba(245,158,11,.15)}
+        .badge.resolved{color:#86efac;border-color:rgba(34,197,94,.45);background:rgba(34,197,94,.15)}
+        .badge.high,.badge.urgent{color:#fca5a5;border-color:rgba(239,68,68,.45);background:rgba(239,68,68,.15)}
+        .badge.normal,.badge.medium{color:#93c5fd;border-color:rgba(59,130,246,.4);background:rgba(59,130,246,.15)}
+
+        .faq-item{border:1px solid rgba(148,163,184,.25);border-radius:10px;background:rgba(2,6,23,.45)}
+        .faq-q{width:100%;text-align:left;background:transparent;border:none;color:#e2e8f0;padding:10px;font:inherit;font-weight:600;cursor:pointer}
+        .faq-a{display:none;padding:0 10px 10px;color:#cbd5e1}
+        .faq-item.open .faq-a{display:block}
+
+        .empty{text-align:center;color:#94a3b8;border:1px dashed rgba(148,163,184,.35);border-radius:10px;padding:14px}
+
+        @media (max-width:980px){.grid{grid-template-columns:1fr}}
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">MatrixMarket</div>
+        <nav>
+            <a href="index.html">Home</a>
+            <a href="shop.html">Shop</a>
+            <a href="buyers-orders.html">My Orders</a>
+            <a href="chat.html">Chat</a>
+            <a href="agent-page.html">Agent Page</a>
+        </nav>
+    </header>
+
+    <main class="shell">
+        <section class="hero">
+            <h1>Agent Support Page</h1>
+            <p>Get quick help from support agents, submit issues, and track your tickets. You can also jump directly to live chat with the support team.</p>
+            <div class="row">
+                <button class="btn" id="liveChatBtn" type="button">Open Live Support Chat</button>
+                <a class="btn alt" href="buyers-orders.html">Go To My Orders</a>
+                <a class="btn alt" href="shop.html">Continue Shopping</a>
+            </div>
+        </section>
+
+        <section class="grid">
+            <article class="card">
+                <h2>Open A Support Ticket</h2>
+                <form class="form" id="ticketForm">
+                    <input id="ticketName" type="text" placeholder="Your full name" required>
+                    <input id="ticketEmail" type="email" placeholder="Your email" required>
+                    <select id="ticketRole">
+                        <option value="buyer">Buyer</option>
+                        <option value="seller">Seller</option>
+                    </select>
+                    <input id="ticketOrderId" type="text" placeholder="Order ID (optional)">
+                    <input id="ticketSubject" type="text" placeholder="Subject" required>
+                    <select id="ticketPriority">
+                        <option value="normal">Priority: Normal</option>
+                        <option value="high">Priority: High</option>
+                        <option value="urgent">Priority: Urgent</option>
+                    </select>
+                    <textarea id="ticketMessage" placeholder="Describe your issue" required></textarea>
+                    <div class="row">
+                        <button class="btn" type="submit">Submit Ticket</button>
+                        <button class="btn alt" id="ticketResetBtn" type="button">Reset</button>
+                    </div>
+                </form>
+            </article>
+
+            <article class="card">
+                <h2>Admin Notifications</h2>
+                <div class="meta" style="margin-bottom:8px;">Messages sent by admin to all users, buyers, sellers, or directly to you.</div>
+                <div id="noticeList" class="notice-list"></div>
+            </article>
+        </section>
+
+        <section class="grid">
+            <article class="card">
+                <h3>My Tickets</h3>
+                <div class="row" style="margin-bottom:8px;">
+                    <input id="ticketSearch" type="text" placeholder="Search subject or message">
+                    <select id="ticketStatusFilter">
+                        <option value="">All Status</option>
+                        <option value="open">Open</option>
+                        <option value="resolved">Resolved</option>
+                    </select>
+                </div>
+                <div id="ticketList" class="ticket-list"></div>
+            </article>
+
+            <article class="card">
+                <h3>Quick Help</h3>
+                <div class="row" style="margin-bottom:8px;">
+                    <button class="btn alt" id="reportSellerBtn" type="button">Report Seller</button>
+                    <button class="btn alt" id="rateSellerBtn" type="button">Rate Seller</button>
+                    <button class="btn warn" id="paymentHelpBtn" type="button">Subscription Payment Help</button>
+                </div>
+                <div class="faq-item"><button class="faq-q" type="button">How do I contact support quickly?</button><div class="faq-a">Use the "Open Live Support Chat" button. It opens chat with Support immediately.</div></div>
+                <div class="faq-item"><button class="faq-q" type="button">How do I report seller issues?</button><div class="faq-a">Use "Report Seller" or open an order in My Orders and tap "Complain".</div></div>
+                <div class="faq-item"><button class="faq-q" type="button">How do seller subscriptions work?</button><div class="faq-a">Sellers must pay to Wave or Comcash account number 6785316. Admin approval activates subscription.</div></div>
+                <div class="faq-item"><button class="faq-q" type="button">Can suspended sellers post products?</button><div class="faq-a">No. Suspended seller accounts cannot post products until admin restores them.</div></div>
+            </article>
+        </section>
+    </main>
+
+    <script>
+        const state = { user: null, tickets: [], filteredTickets: [], notices: [] };
+
+        function byId(id){ return document.getElementById(id); }
+        function str(v){ return String(v == null ? "" : v).trim(); }
+        function clean(v){ return str(v).toLowerCase(); }
+        function nowIso(){ return new Date().toISOString(); }
+        function read(key, fallback){ try { const d = JSON.parse(MMStorage.getItem(key) || "null"); return d ?? fallback; } catch (_) { return fallback; } }
+        function write(key, value){ MMStorage.setItem(key, JSON.stringify(value)); }
+        function esc(value){ return String(value == null ? "" : value).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\"/g,"&quot;").replace(/'/g,"&#39;"); }
+
+        function badge(status){
+            const s = clean(status || "normal");
+            return '<span class="badge ' + esc(s) + '">' + esc(str(status || s)) + '</span>';
+        }
+
+        function initUser(){
+            state.user = read("currentUser", null) || {};
+            byId("ticketName").value = str(state.user.fullName || state.user.name || "");
+            byId("ticketEmail").value = str(state.user.email || "");
+            if (state.user.isSeller) byId("ticketRole").value = "seller";
+        }
+
+        function openLiveChat(){
+            MMStorage.setItem("chatWith", "Support");
+            window.location.href = "chat.html?seller=" + encodeURIComponent("Support");
+        }
+
+        function loadTickets(){
+            const email = clean(byId("ticketEmail").value || (state.user && state.user.email));
+            const all = read("supportTickets", []);
+            state.tickets = (Array.isArray(all) ? all : []).map(function (t, i) {
+                return {
+                    id: str(t.id || ("TKT-" + i)),
+                    name: str(t.name || "User"),
+                    email: str(t.email || ""),
+                    role: str(t.role || "buyer"),
+                    orderId: str(t.orderId || ""),
+                    subject: str(t.subject || "No subject"),
+                    message: str(t.message || ""),
+                    priority: str(t.priority || "normal"),
+                    status: str(t.status || "open"),
+                    createdAt: t.createdAt || t.date || nowIso(),
+                    updatedAt: t.updatedAt || ""
+                };
+            }).filter(function (t){ return !email || clean(t.email) === email; }).sort(function (a,b){ return String(b.createdAt).localeCompare(String(a.createdAt)); });
+        }
+
+        function applyTicketFilters(){
+            const q = clean(byId("ticketSearch").value);
+            const status = clean(byId("ticketStatusFilter").value);
+            state.filteredTickets = state.tickets.filter(function (t) {
+                const hay = [t.subject, t.message, t.orderId, t.priority, t.status].join(" ").toLowerCase();
+                return (!q || hay.includes(q)) && (!status || clean(t.status) === status);
+            });
+        }
+
+        function renderTickets(){
+            const box = byId("ticketList");
+            if (!state.filteredTickets.length) {
+                box.innerHTML = '<div class="empty">No tickets yet.</div>';
+                return;
+            }
+            box.innerHTML = state.filteredTickets.map(function (t) {
+                return '<article class="ticket">' +
+                    '<div class="ticket-head"><strong>' + esc(t.subject) + '</strong><div>' + badge(t.status) + ' ' + badge(t.priority) + '</div></div>' +
+                    '<div class="meta">' + esc(new Date(t.createdAt).toLocaleString()) + ' | Role: ' + esc(t.role) + (t.orderId ? (' | Order: ' + esc(t.orderId)) : '') + '</div>' +
+                    '<div>' + esc(t.message) + '</div>' +
+                    '<div class="row"><button class="btn alt" data-ticket-action="toggle" data-id="' + esc(t.id) + '" type="button">' + (clean(t.status) === "open" ? "Mark Resolved" : "Reopen") + '</button><button class="btn danger" data-ticket-action="delete" data-id="' + esc(t.id) + '" type="button">Delete</button></div>' +
+                    '</article>';
+            }).join("");
+        }
+
+        function loadNotices(){
+            const email = clean(state.user && state.user.email);
+            const role = state.user && state.user.isSeller ? "seller" : "buyer";
+            const notices = read("adminNotifications", []);
+            state.notices = (Array.isArray(notices) ? notices : []).map(function (n, i) {
+                return {
+                    id: str(n.id || ("NOTF-" + i)),
+                    audience: clean(n.audience || "all"),
+                    targetEmail: clean(n.targetEmail || ""),
+                    targetName: str(n.targetName || ""),
+                    message: str(n.message || ""),
+                    priority: str(n.priority || "normal"),
+                    status: clean(n.status || "active"),
+                    createdAt: n.createdAt || n.date || nowIso(),
+                    expiresAt: n.expiresAt || ""
+                };
+            }).filter(function (n) {
+                if (n.status !== "active") return false;
+                if (n.expiresAt && new Date(n.expiresAt).getTime() < Date.now()) return false;
+                if (n.audience === "all") return true;
+                if (n.audience === "buyers" && role === "buyer") return true;
+                if (n.audience === "sellers" && role === "seller") return true;
+                if (n.audience === "buyer" && role === "buyer" && email && n.targetEmail === email) return true;
+                if (n.audience === "seller" && role === "seller" && email && n.targetEmail === email) return true;
+                return false;
+            }).sort(function (a,b){ return String(b.createdAt).localeCompare(String(a.createdAt)); });
+        }
+
+        function renderNotices(){
+            const box = byId("noticeList");
+            if (!state.notices.length) {
+                box.innerHTML = '<div class="empty">No active admin notifications for your account.</div>';
+                return;
+            }
+            box.innerHTML = state.notices.map(function (n) {
+                return '<article class="notice"><div class="notice-head"><strong>' + badge(n.priority) + '</strong><span class="meta">' + esc(new Date(n.createdAt).toLocaleString()) + '</span></div><div>' + esc(n.message) + '</div><div class="meta">Audience: ' + esc(n.audience) + (n.targetName ? (' | Target: ' + esc(n.targetName)) : '') + '</div></article>';
+            }).join("");
+        }
+
+        function submitTicket(event){
+            event.preventDefault();
+            const payload = {
+                id: "TKT-" + Date.now() + "-" + Math.random().toString(36).slice(2,6),
+                name: str(byId("ticketName").value),
+                email: str(byId("ticketEmail").value),
+                role: str(byId("ticketRole").value),
+                orderId: str(byId("ticketOrderId").value),
+                subject: str(byId("ticketSubject").value),
+                priority: str(byId("ticketPriority").value),
+                message: str(byId("ticketMessage").value),
+                status: "open",
+                createdAt: nowIso(),
+                date: nowIso()
+            };
+
+            if (!payload.name || !payload.email || !payload.subject || !payload.message) {
+                alert("Please complete all required ticket fields.");
+                return;
+            }
+
+            const all = read("supportTickets", []);
+            all.unshift(payload);
+            write("supportTickets", all);
+            alert("Ticket submitted successfully.");
+
+            byId("ticketSubject").value = "";
+            byId("ticketOrderId").value = "";
+            byId("ticketMessage").value = "";
+
+            refreshTickets();
+        }
+
+        function handleTicketAction(id, action){
+            const all = read("supportTickets", []);
+            const idx = all.findIndex(function (t){ return str(t.id) === str(id); });
+            if (idx < 0) return;
+            if (action === "delete") {
+                all.splice(idx, 1);
+            } else if (action === "toggle") {
+                all[idx].status = clean(all[idx].status) === "open" ? "resolved" : "open";
+                all[idx].updatedAt = nowIso();
+            }
+            write("supportTickets", all);
+            refreshTickets();
+        }
+
+        function refreshTickets(){
+            loadTickets();
+            applyTicketFilters();
+            renderTickets();
+        }
+
+        function bind(){
+            byId("liveChatBtn").addEventListener("click", openLiveChat);
+            byId("ticketForm").addEventListener("submit", submitTicket);
+            byId("ticketResetBtn").addEventListener("click", function () {
+                byId("ticketOrderId").value = "";
+                byId("ticketSubject").value = "";
+                byId("ticketMessage").value = "";
+                byId("ticketPriority").value = "normal";
+            });
+
+            byId("ticketSearch").addEventListener("input", refreshTickets);
+            byId("ticketStatusFilter").addEventListener("change", refreshTickets);
+            byId("ticketList").addEventListener("click", function (event) {
+                const btn = event.target.closest("button[data-ticket-action]");
+                if (!btn) return;
+                handleTicketAction(btn.getAttribute("data-id"), btn.getAttribute("data-ticket-action"));
+            });
+
+            byId("reportSellerBtn").addEventListener("click", function(){
+                window.location.href = "buyers-orders.html";
+            });
+            byId("rateSellerBtn").addEventListener("click", function(){
+                window.location.href = "buyers-orders.html";
+            });
+            byId("paymentHelpBtn").addEventListener("click", function(){
+                alert("Seller subscription payments must be sent to Wave or Comcash account number 6785316, then admin approves before activation.");
+            });
+
+            document.querySelectorAll(".faq-item .faq-q").forEach(function (btn) {
+                btn.addEventListener("click", function () {
+                    btn.parentElement.classList.toggle("open");
+                });
+            });
+
+            window.addEventListener("storage", function () {
+                refreshTickets();
+                loadNotices();
+                renderNotices();
+            });
+        }
+
+        window.addEventListener("load", function () {
+            const ready = window.MMStorage && window.MMStorage.ready;
+            const start = function () {
+                initUser();
+                bind();
+                refreshTickets();
+                loadNotices();
+                renderNotices();
+            };
+            if (ready && typeof ready.then === "function") {
+                ready.finally(start);
+                return;
+            }
+            start();
+        });
+    </script>
+  <script defer src="sw-register.js?v=20260226a"></script>
+  <script defer src="site-performance.js?v=20260226a"></script>
+</body>
+</html>
+
+
+
+

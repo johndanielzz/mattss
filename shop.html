@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>MatrixMarket - Shop</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="upgrade.css">
+    <script src="firebase-online-storage.js"></script>
+    <style>
+        :root {
+            --bg: #0a1327;
+            --panel: rgba(15, 23, 42, 0.82);
+            --panel-soft: rgba(30, 41, 59, 0.7);
+            --border: rgba(148, 163, 184, 0.28);
+            --text: #e2e8f0;
+            --muted: #94a3b8;
+            --accent: #67e8f9;
+            --accent-2: #38bdf8;
+            --good: #86efac;
+            --warn: #fcd34d;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: "Poppins", sans-serif;
+            background:
+                radial-gradient(900px 320px at -10% 10%, rgba(56, 189, 248, 0.2), transparent),
+                radial-gradient(700px 300px at 110% 15%, rgba(14, 165, 233, 0.2), transparent),
+                linear-gradient(180deg, #0f172a, #0b1324 42%, #070d19);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.9rem 1rem;
+            border-bottom: 1px solid var(--border);
+            background: rgba(2, 6, 23, 0.86);
+            backdrop-filter: blur(8px);
+        }
+
+        .logo { font-size: 1.3rem; font-weight: 800; color: var(--accent); }
+        .nav-toggle {
+            display: none;
+            border-radius: 9px;
+            border: 1px solid var(--border);
+            background: rgba(2, 6, 23, 0.72);
+            color: var(--text);
+            padding: 0.46rem 0.74rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        nav { display: flex; gap: 0.55rem; flex-wrap: wrap; }
+        nav a {
+            color: var(--text);
+            text-decoration: none;
+            border: 1px solid transparent;
+            padding: 0.36rem 0.56rem;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        nav a.active, nav a:hover { border-color: var(--border); color: var(--accent); }
+
+        .shell {
+            width: min(1220px, 100% - 1.2rem);
+            margin: 0.95rem auto 1.2rem;
+            display: grid;
+            gap: 0.8rem;
+        }
+
+        .hero {
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 0.9rem;
+            background:
+                radial-gradient(600px 200px at 0% 0%, rgba(14, 165, 233, 0.25), transparent),
+                var(--panel);
+        }
+        .hero h1 { margin: 0; font-size: 1.35rem; }
+        .hero p { margin: 0.25rem 0 0; color: var(--muted); }
+        .latest-wrap {
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 0.72rem;
+            background: rgba(2, 6, 23, 0.62);
+        }
+        .latest-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+            margin-bottom: 0.6rem;
+        }
+        .latest-head h2 { margin: 0; font-size: 1.02rem; }
+        .latest-grid {
+            display: grid;
+            gap: 0.6rem;
+            grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+        }
+        .latest-item {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            background: rgba(15, 23, 42, 0.74);
+            display: grid;
+            grid-template-rows: auto 1fr;
+        }
+        .latest-item img {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            object-fit: cover;
+            background: #020617;
+        }
+        .latest-item .info {
+            padding: 0.52rem;
+            display: grid;
+            gap: 0.3rem;
+        }
+        .latest-item .name {
+            margin: 0;
+            font-size: 0.9rem;
+        }
+        .latest-item .meta {
+            font-size: 0.78rem;
+            color: var(--muted);
+        }
+        .latest-item .latest-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .kpi-grid {
+            display: grid;
+            gap: 0.6rem;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            margin-top: 0.8rem;
+        }
+        .kpi {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: rgba(2, 6, 23, 0.62);
+            padding: 0.6rem;
+        }
+        .kpi .label { color: var(--muted); font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.04em; }
+        .kpi .value { margin-top: 0.2rem; font-size: 1.2rem; font-weight: 800; }
+
+        .card {
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 0.72rem;
+            background: var(--panel-soft);
+        }
+
+        .toolbar {
+            display: grid;
+            gap: 0.5rem;
+            grid-template-columns: 1.2fr repeat(5, minmax(0, 1fr)) auto;
+        }
+
+        input, select, button {
+            width: 100%;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: rgba(2, 6, 23, 0.55);
+            color: var(--text);
+            padding: 0.58rem 0.62rem;
+            font: inherit;
+        }
+        button { cursor: pointer; font-weight: 700; }
+        .btn {
+            border: none;
+            background: linear-gradient(135deg, #0ea5e9, #2563eb);
+            color: #fff;
+        }
+        .btn.alt {
+            border: 1px solid var(--border);
+            background: rgba(30, 41, 59, 0.75);
+        }
+
+        .grid {
+            display: grid;
+            gap: 0.7rem;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        }
+
+        .product {
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: rgba(2, 6, 23, 0.72);
+            overflow: hidden;
+            display: grid;
+            grid-template-rows: auto 1fr;
+        }
+        .media {
+            width: 100%;
+            aspect-ratio: 16 / 10;
+            object-fit: cover;
+            background: #020617;
+        }
+        .body {
+            padding: 0.62rem;
+            display: grid;
+            gap: 0.35rem;
+            align-content: start;
+        }
+        .name { margin: 0; font-size: 1rem; }
+        .price { color: var(--accent); font-weight: 800; }
+        .meta { font-size: 0.84rem; color: var(--muted); }
+        .chips { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+        .chip {
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 0.11rem 0.43rem;
+            font-size: 0.72rem;
+            background: rgba(30, 41, 59, 0.55);
+        }
+        .chip.good { color: var(--good); border-color: rgba(34, 197, 94, 0.45); background: rgba(34, 197, 94, 0.16); }
+        .chip.warn { color: var(--warn); border-color: rgba(245, 158, 11, 0.45); background: rgba(245, 158, 11, 0.16); }
+
+        .actions {
+            margin-top: 0.2rem;
+            display: grid;
+            grid-template-columns: 74px 1fr 1fr auto;
+            gap: 0.35rem;
+        }
+        .qty {
+            text-align: center;
+            font-weight: 700;
+        }
+
+        .empty {
+            text-align: center;
+            border: 1px dashed var(--border);
+            border-radius: 12px;
+            color: var(--muted);
+            padding: 1rem;
+        }
+
+        .note { color: var(--muted); font-size: 0.82rem; }
+
+        @media (max-width: 1060px) {
+            .toolbar { grid-template-columns: 1fr 1fr; }
+            .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        @media (max-width: 980px) {
+            header { flex-wrap: wrap; }
+            .nav-toggle { display: inline-flex; }
+            nav {
+                display: none;
+                width: 100%;
+                grid-template-columns: 1fr 1fr;
+                gap: 0.46rem;
+            }
+            header.open nav { display: grid; }
+            nav a {
+                text-align: center;
+                background: rgba(15, 23, 42, 0.45);
+                border-color: rgba(148, 163, 184, 0.2);
+                padding: 0.5rem 0.55rem;
+            }
+            .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .latest-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        @media (max-width: 700px) {
+            .kpi-grid { grid-template-columns: 1fr; }
+            .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.55rem; }
+            .latest-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .body { padding: 0.5rem; }
+            .name { font-size: 0.92rem; }
+            .price { font-size: 0.92rem; }
+            .meta { font-size: 0.76rem; }
+            .actions { grid-template-columns: 1fr 1fr; }
+            .qty { min-width: 0; padding: 0.42rem 0.3rem; font-size: 0.82rem; }
+            .actions button { padding: 0.46rem 0.38rem; font-size: 0.78rem; }
+        }
+        @media (max-width: 520px) {
+            nav { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">MatrixMarket</div>
+        <button id="shopMenuToggle" class="nav-toggle" type="button" aria-expanded="false" aria-controls="shopNav">Menu</button>
+        <nav id="shopNav">
+            <a href="index.html">Home</a>
+            <a class="active" href="shop.html">Shop</a>
+            <a href="auto-parts.html">Auto Parts</a>
+            <a href="sellers.html">Sellers</a>
+            <a href="cart.html">Cart</a>
+            <a href="chat.html">Chat</a>
+        </nav>
+    </header>
+
+    <main class="shell">
+        <section class="hero">
+            <h1>Marketplace Shop</h1>
+            <p>Browse active products only. Sold-out products are hidden from buyers automatically.</p>
+            <div class="kpi-grid" id="kpiGrid"></div>
+        </section>
+
+        <section class="latest-wrap">
+            <div class="latest-head">
+                <h2>Latest Arrivals</h2>
+                <span class="note">Synced with homepage latest products</span>
+            </div>
+            <div id="latestGrid" class="latest-grid"></div>
+        </section>
+
+        <section class="card">
+            <div class="toolbar">
+                <input id="searchInput" type="search" placeholder="Search product, category, seller, location">
+                <select id="sellerFilter"><option value="">All Sellers</option></select>
+                <select id="categoryFilter"><option value="">All Categories</option></select>
+                <input id="minPrice" type="number" min="0" step="0.01" placeholder="Min Price">
+                <input id="maxPrice" type="number" min="0" step="0.01" placeholder="Max Price">
+                <select id="sortFilter">
+                    <option value="newest">Newest</option>
+                    <option value="priceAsc">Price Low</option>
+                    <option value="priceDesc">Price High</option>
+                    <option value="nameAsc">Name A-Z</option>
+                    <option value="stockDesc">Stock High</option>
+                </select>
+                <button class="btn alt" id="resetBtn" type="button">Reset</button>
+            </div>
+        </section>
+
+        <section class="card">
+            <div id="productGrid" class="grid"></div>
+        </section>
+
+        <div class="note">Checkout re-validates stock and deducts quantities when orders are placed.</div>
+    </main>
+
+    <script src="seller-core.js?v=20260222g"></script>
+    <script>
+        const state = { products: [], visible: [], latest: [], soldOutHidden: 0 };
+
+        function byId(id) { return document.getElementById(id); }
+        function num(v) { const n = Number(v); return Number.isFinite(n) ? n : 0; }
+        function money(v) { return num(v).toFixed(2) + " GMD"; }
+        function clean(v) { return String(v == null ? "" : v).trim().toLowerCase(); }
+        function esc(v) { return String(v == null ? "" : v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;").replace(/'/g, "&#39;"); }
+        function productStamp(product) {
+            const parsed = Date.parse(String(product && (product.createdAt || product.updatedAt || product.date || "")));
+            if (Number.isFinite(parsed)) return parsed;
+            const fallback = num(product && (product.id || product.createdAt || product.updatedAt));
+            return fallback > 1000000000 ? fallback : 0;
+        }
+        function latestItems(items, limit) {
+            return (Array.isArray(items) ? items : []).slice().sort(function (a, b) { return productStamp(b) - productStamp(a); }).slice(0, limit);
+        }
+        function saveLatestCache(items) {
+            const rows = latestItems(items, 12).map(function (p) {
+                return {
+                    id: p.id,
+                    name: p.name,
+                    category: p.category,
+                    price: p.price,
+                    seller: p.seller || p.sellerName || "Unknown Seller",
+                    image: p.image,
+                    createdAt: p.createdAt || p.updatedAt || p.id
+                };
+            });
+            MMStorage.setItem("latestProductsCache", JSON.stringify({ at: Date.now(), items: rows }));
+        }
+        function readLatestCache() {
+            const raw = SellerCore.readJSON("latestProductsCache", {});
+            if (Array.isArray(raw)) return raw;
+            return Array.isArray(raw && raw.items) ? raw.items : [];
+        }
+
+        function readCart() {
+            const rows = SellerCore.readJSON("cart", null);
+            if (Array.isArray(rows)) return rows.slice();
+            const legacy = SellerCore.readJSON("cartItems", []);
+            return Array.isArray(legacy) ? legacy.slice() : [];
+        }
+
+        function writeCart(rows) {
+            MMStorage.setItem("cart", JSON.stringify(rows));
+            MMStorage.setItem("cartItems", JSON.stringify(rows));
+        }
+
+        function loadProducts() {
+            const all = SellerCore.getMarketplaceProducts({ includeOutOfStock: true, includeHidden: true });
+            state.soldOutHidden = all.filter(function (p) { return p.stock <= 0 || p.isVisible === false; }).length;
+            state.products = all.filter(function (p) { return p.stock > 0 && p.isVisible !== false; });
+            state.latest = latestItems(state.products, 8);
+            saveLatestCache(state.products);
+        }
+
+        function populateFilters() {
+            const sellers = Array.from(new Set(state.products.map(function (p) {
+                return SellerCore.str(p.seller || p.sellerName || "Unknown Seller");
+            }).filter(Boolean))).sort();
+            const categories = Array.from(new Set(state.products.map(function (p) {
+                return clean(p.category || "general");
+            }).filter(Boolean))).sort();
+
+            byId("sellerFilter").innerHTML = '<option value="">All Sellers</option>' + sellers.map(function (s) {
+                return '<option value="' + esc(clean(s)) + '">' + esc(s) + '</option>';
+            }).join("");
+
+            byId("categoryFilter").innerHTML = '<option value="">All Categories</option>' + categories.map(function (c) {
+                return '<option value="' + esc(c) + '">' + esc(c) + '</option>';
+            }).join("");
+        }
+
+        function applyFilters() {
+            const q = clean(byId("searchInput").value);
+            const seller = clean(byId("sellerFilter").value);
+            const category = clean(byId("categoryFilter").value);
+            const minPrice = num(byId("minPrice").value);
+            const maxPriceRaw = byId("maxPrice").value;
+            const maxPrice = maxPriceRaw === "" ? Number.POSITIVE_INFINITY : num(maxPriceRaw);
+            const sort = byId("sortFilter").value;
+
+            state.visible = state.products.filter(function (product) {
+                const hay = [product.name, product.category, product.seller, product.sellerEmail, product.location, product.description].join(" ").toLowerCase();
+                const sellerName = clean(product.seller || product.sellerName || "");
+                const categoryName = clean(product.category || "general");
+                const price = num(product.price);
+                return (!q || hay.includes(q)) &&
+                    (!seller || sellerName === seller) &&
+                    (!category || categoryName === category) &&
+                    (price >= minPrice) &&
+                    (price <= maxPrice);
+            });
+
+            state.visible.sort(function (a, b) {
+                if (sort === "priceAsc") return a.price - b.price;
+                if (sort === "priceDesc") return b.price - a.price;
+                if (sort === "nameAsc") return a.name.localeCompare(b.name);
+                if (sort === "stockDesc") return b.stock - a.stock;
+                return productStamp(b) - productStamp(a);
+            });
+        }
+
+        function renderKpis() {
+            const sellers = new Set(state.visible.map(function (p) { return clean(p.seller || p.sellerEmail); })).size;
+            const stockUnits = state.visible.reduce(function (sum, p) { return sum + num(p.stock); }, 0);
+            const cards = [
+                ["Visible Products", state.visible.length],
+                ["Active Sellers", sellers],
+                ["Stock Units", stockUnits],
+                ["Hidden Sold Out", state.soldOutHidden]
+            ];
+            byId("kpiGrid").innerHTML = cards.map(function (row) {
+                return '<article class="kpi"><div class="label">' + row[0] + '</div><div class="value">' + row[1] + '</div></article>';
+            }).join("");
+        }
+
+        function stockBadge(stock) {
+            if (stock <= 3) return '<span class="chip warn">Low Stock: ' + stock + '</span>';
+            return '<span class="chip good">In Stock: ' + stock + '</span>';
+        }
+
+        function renderLatestProducts() {
+            const box = byId("latestGrid");
+            if (!box) return;
+            const source = latestItems(state.products, 8);
+            const rows = source.length ? source : readLatestCache();
+            state.latest = rows.slice(0, 8);
+            if (!state.latest.length) {
+                box.innerHTML = '<div class="empty">No latest products available.</div>';
+                return;
+            }
+            box.innerHTML = state.latest.map(function (product) {
+                const safeId = encodeURIComponent(String(product.id || ""));
+                return '<article class="latest-item">' +
+                    '<img loading="lazy" decoding="async" fetchpriority="low" src="' + esc((product.image || "matrixx.png").includes("via.placeholder.com") ? "matrixx.png" : (product.image || "matrixx.png")) + '" alt="' + esc(product.name || "Product") + '">' +
+                    '<div class="info">' +
+                    '<h3 class="name">' + esc(product.name || "Product") + '</h3>' +
+                    '<div class="meta">' + esc(product.category || "general") + ' | ' + esc(product.seller || product.sellerName || "Unknown Seller") + '</div>' +
+                    '<div class="latest-row"><strong>' + money(product.price) + '</strong><button class="btn alt" data-latest-id="' + safeId + '" type="button">Open</button></div>' +
+                    '</div>' +
+                    '</article>';
+            }).join("");
+        }
+
+        function renderProducts() {
+            const box = byId("productGrid");
+            if (!state.visible.length) {
+                box.innerHTML = '<div class="empty">No products found with current filters.</div>';
+                renderKpis();
+                renderLatestProducts();
+                return;
+            }
+
+            box.innerHTML = state.visible.map(function (product) {
+                const safeId = encodeURIComponent(product.id);
+                const safeSeller = encodeURIComponent(product.seller || product.sellerName || "Seller");
+                const maxQty = Math.max(1, Math.floor(num(product.stock)));
+                return '<article class="product">' +
+                    '<img class="media" loading="lazy" decoding="async" fetchpriority="low" src="' + esc((product.image || "matrixx.png").includes("via.placeholder.com") ? "matrixx.png" : (product.image || "matrixx.png")) + '" alt="' + esc(product.name) + '">' +
+                    '<div class="body">' +
+                    '<h3 class="name">' + esc(product.name) + '</h3>' +
+                    '<div class="price">' + money(product.price) + '</div>' +
+                    '<div class="meta">Seller: ' + esc(product.seller || "Unknown Seller") + '</div>' +
+                    '<div class="meta">' + esc(product.location || "Location not set") + '</div>' +
+                    '<div class="chips"><span class="chip">' + esc(product.category || "general") + '</span>' + stockBadge(maxQty) + '</div>' +
+                    '<div class="actions">' +
+                    '<input class="qty" type="number" min="1" max="' + maxQty + '" value="1" data-qty-id="' + safeId + '">' +
+                    '<button class="btn alt" data-action="add" data-id="' + safeId + '">Add</button>' +
+                    '<button class="btn" data-action="buy" data-id="' + safeId + '">Buy</button>' +
+                    '<button class="btn alt" data-action="chat" data-seller="' + safeSeller + '">Chat</button>' +
+                    '</div>' +
+                    '</div>' +
+                    '</article>';
+            }).join("");
+
+            renderKpis();
+            renderLatestProducts();
+        }
+
+        function getQtyForProduct(id, maxStock) {
+            const inputs = document.querySelectorAll("input[data-qty-id]");
+            let input = null;
+            for (let i = 0; i < inputs.length; i += 1) {
+                if (String(inputs[i].getAttribute("data-qty-id")) === String(id)) {
+                    input = inputs[i];
+                    break;
+                }
+            }
+            const qty = input ? Math.floor(num(input.value || 1)) : 1;
+            return Math.max(1, Math.min(maxStock, qty));
+        }
+
+        function productToCartItem(product, qty) {
+            return {
+                id: product.id,
+                name: product.name,
+                price: num(product.price),
+                image: product.image,
+                seller: product.seller || product.sellerName || "Unknown Seller",
+                sellerEmail: SellerCore.cleanEmail(product.sellerEmail || ""),
+                category: product.category || "general",
+                quantity: qty
+            };
+        }
+
+        function addProductToCart(product, qty, silent) {
+            if (!product || product.stock <= 0) return false;
+            const cart = readCart();
+            const safeQty = Math.max(1, Math.floor(num(qty || 1)));
+
+            const existing = cart.find(function (item) {
+                return String(item.id || "") === String(product.id) ||
+                    (clean(item.name) === clean(product.name) && clean(item.sellerEmail) === clean(product.sellerEmail));
+            });
+
+            if (existing) {
+                const next = Math.min(product.stock, Math.max(1, Math.floor(num(existing.quantity || 1))) + safeQty);
+                existing.quantity = next;
+            } else {
+                cart.push(productToCartItem(product, Math.min(product.stock, safeQty)));
+            }
+
+            writeCart(cart);
+            if (!silent) alert(product.name + " added to cart.");
+            return true;
+        }
+
+        function startChat(target) {
+            const seller = decodeURIComponent(target || "");
+            if (!seller) return;
+            MMStorage.setItem("chatWith", seller);
+            window.location.href = "chat.html?seller=" + encodeURIComponent(seller);
+        }
+
+        function buyNow(product, qty) {
+            if (!addProductToCart(product, qty, true)) return;
+            const one = productToCartItem(product, Math.max(1, Math.min(product.stock, qty)));
+            const subtotal = one.price * one.quantity;
+            const shipping = subtotal >= 500 ? 0 : 25;
+            MMStorage.setItem("checkoutCart", JSON.stringify([one]));
+            MMStorage.setItem("checkoutMeta", JSON.stringify({
+                coupon: null,
+                subtotal: subtotal,
+                discount: 0,
+                shipping: shipping,
+                total: subtotal + shipping
+            }));
+            window.location.href = "checkout.html";
+        }
+
+        function refresh() {
+            loadProducts();
+            applyFilters();
+            renderProducts();
+        }
+
+        function bindHeaderMenu() {
+            const header = document.querySelector("header");
+            const toggle = byId("shopMenuToggle");
+            const nav = byId("shopNav");
+            if (!header || !toggle || !nav) return;
+
+            function closeMenu(force) {
+                if (!force && window.innerWidth > 980) return;
+                header.classList.remove("open");
+                toggle.textContent = "Menu";
+                toggle.setAttribute("aria-expanded", "false");
+            }
+
+            toggle.addEventListener("click", function () {
+                const open = !header.classList.contains("open");
+                header.classList.toggle("open", open);
+                toggle.textContent = open ? "Close" : "Menu";
+                toggle.setAttribute("aria-expanded", open ? "true" : "false");
+            });
+
+            nav.addEventListener("click", function (event) {
+                if (event.target.closest("a")) closeMenu();
+            });
+
+            document.addEventListener("click", function (event) {
+                if (window.innerWidth <= 980 && !header.contains(event.target)) closeMenu();
+            });
+
+            window.addEventListener("resize", function () {
+                if (window.innerWidth > 980) closeMenu(true);
+            });
+        }
+
+        function initShopPage() {
+            bindHeaderMenu();
+            loadProducts();
+            populateFilters();
+            applyFilters();
+            renderProducts();
+
+            ["searchInput", "sellerFilter", "categoryFilter", "sortFilter", "minPrice", "maxPrice"].forEach(function (id) {
+                byId(id).addEventListener(id.includes("Input") ? "input" : "change", function () {
+                    applyFilters();
+                    renderProducts();
+                });
+            });
+
+            byId("resetBtn").addEventListener("click", function () {
+                byId("searchInput").value = "";
+                byId("sellerFilter").value = "";
+                byId("categoryFilter").value = "";
+                byId("minPrice").value = "";
+                byId("maxPrice").value = "";
+                byId("sortFilter").value = "newest";
+                refresh();
+            });
+
+            byId("productGrid").addEventListener("click", function (event) {
+                const btn = event.target.closest("button[data-action]");
+                if (!btn) return;
+                if (btn.dataset.action === "chat") {
+                    startChat(btn.dataset.seller || "");
+                    return;
+                }
+                const id = decodeURIComponent(btn.dataset.id || "");
+                const product = state.products.find(function (p) { return String(p.id) === id; });
+                if (!product) return;
+                const qty = getQtyForProduct(id, Math.max(1, product.stock));
+                if (btn.dataset.action === "add") addProductToCart(product, qty, false);
+                if (btn.dataset.action === "buy") buyNow(product, qty);
+            });
+
+            byId("latestGrid").addEventListener("click", function (event) {
+                const btn = event.target.closest("button[data-latest-id]");
+                if (!btn) return;
+                const id = decodeURIComponent(btn.dataset.latestId || "");
+                const product = state.products.find(function (p) { return String(p.id) === id; });
+                if (product) {
+                    byId("searchInput").value = product.name || "";
+                    byId("sortFilter").value = "newest";
+                    applyFilters();
+                    renderProducts();
+                    byId("productGrid").scrollIntoView({ behavior: "smooth", block: "start" });
+                    return;
+                }
+                const cached = state.latest.find(function (p) { return String(p.id) === id; });
+                if (cached) {
+                    byId("searchInput").value = cached.name || "";
+                    byId("sortFilter").value = "newest";
+                    applyFilters();
+                    renderProducts();
+                    byId("productGrid").scrollIntoView({ behavior: "smooth", block: "start" });
+                }
+            });
+
+            window.addEventListener("storage", refresh);
+        }
+
+        function startShopPage() {
+            const ready = window.MMStorage && window.MMStorage.ready;
+            if (ready && typeof ready.then === "function") {
+                ready.finally(initShopPage);
+                return;
+            }
+            initShopPage();
+        }
+
+        if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", startShopPage);
+        else startShopPage();
+    </script>
+    <script defer src="upgrade.js"></script>
+  <script defer src="sw-register.js?v=20260226a"></script>
+  <script defer src="site-performance.js?v=20260226a"></script>
+</body>
+</html>
+
+

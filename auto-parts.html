@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>MatrixMarket - Auto Parts</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="upgrade.css">
+    <script src="firebase-online-storage.js"></script>
+    <style>
+        :root {
+            --bg: #0a1327;
+            --panel: rgba(15, 23, 42, 0.82);
+            --panel-soft: rgba(30, 41, 59, 0.7);
+            --border: rgba(148, 163, 184, 0.28);
+            --text: #e2e8f0;
+            --muted: #94a3b8;
+            --accent: #f59e0b;
+            --accent-2: #f97316;
+            --good: #86efac;
+            --warn: #fcd34d;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: "Poppins", sans-serif;
+            background:
+                radial-gradient(900px 320px at -10% 10%, rgba(245, 158, 11, 0.2), transparent),
+                radial-gradient(700px 300px at 110% 15%, rgba(249, 115, 22, 0.2), transparent),
+                linear-gradient(180deg, #161616, #101010 42%, #080808);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.9rem 1rem;
+            border-bottom: 1px solid var(--border);
+            background: rgba(10, 10, 10, 0.86);
+            backdrop-filter: blur(8px);
+        }
+
+        .logo { font-size: 1.3rem; font-weight: 800; color: var(--accent); }
+        nav { display: flex; gap: 0.55rem; flex-wrap: wrap; }
+        nav a {
+            color: var(--text);
+            text-decoration: none;
+            border: 1px solid transparent;
+            padding: 0.36rem 0.56rem;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        nav a.active, nav a:hover { border-color: var(--border); color: var(--accent); }
+
+        .shell {
+            width: min(1220px, 100% - 1.2rem);
+            margin: 0.95rem auto 1.2rem;
+            display: grid;
+            gap: 0.8rem;
+        }
+
+        .hero {
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 0.9rem;
+            background:
+                radial-gradient(600px 220px at 0% 0%, rgba(245, 158, 11, 0.3), transparent),
+                var(--panel);
+        }
+        .hero h1 { margin: 0; font-size: 1.35rem; }
+        .hero p { margin: 0.25rem 0 0; color: var(--muted); }
+
+        .kpi-grid {
+            display: grid;
+            gap: 0.6rem;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            margin-top: 0.8rem;
+        }
+        .kpi {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: rgba(2, 6, 23, 0.62);
+            padding: 0.6rem;
+        }
+        .kpi .label { color: var(--muted); font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.04em; }
+        .kpi .value { margin-top: 0.2rem; font-size: 1.2rem; font-weight: 800; }
+
+        .card {
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 0.72rem;
+            background: var(--panel-soft);
+        }
+
+        .toolbar {
+            display: grid;
+            gap: 0.5rem;
+            grid-template-columns: 1.4fr repeat(4, minmax(0, 1fr)) auto;
+        }
+
+        input, select, button {
+            width: 100%;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: rgba(2, 6, 23, 0.55);
+            color: var(--text);
+            padding: 0.58rem 0.62rem;
+            font: inherit;
+        }
+        button { cursor: pointer; font-weight: 700; }
+        .btn {
+            border: none;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            color: #fff;
+        }
+        .btn.alt {
+            border: 1px solid var(--border);
+            background: rgba(30, 41, 59, 0.75);
+        }
+
+        .grid {
+            display: grid;
+            gap: 0.7rem;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        }
+
+        .product {
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: rgba(2, 6, 23, 0.72);
+            overflow: hidden;
+            display: grid;
+            grid-template-rows: auto 1fr;
+        }
+        .media {
+            width: 100%;
+            aspect-ratio: 16 / 10;
+            object-fit: cover;
+            background: #020617;
+        }
+        .body {
+            padding: 0.62rem;
+            display: grid;
+            gap: 0.35rem;
+            align-content: start;
+        }
+        .name { margin: 0; font-size: 1rem; }
+        .price { color: var(--accent); font-weight: 800; }
+        .meta { font-size: 0.84rem; color: var(--muted); }
+        .chips { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+        .chip {
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 0.11rem 0.43rem;
+            font-size: 0.72rem;
+            background: rgba(30, 41, 59, 0.55);
+        }
+        .chip.good { color: var(--good); border-color: rgba(34, 197, 94, 0.45); background: rgba(34, 197, 94, 0.16); }
+        .chip.warn { color: var(--warn); border-color: rgba(245, 158, 11, 0.45); background: rgba(245, 158, 11, 0.16); }
+
+        .actions {
+            margin-top: 0.2rem;
+            display: grid;
+            grid-template-columns: 74px 1fr 1fr auto;
+            gap: 0.35rem;
+        }
+        .qty {
+            text-align: center;
+            font-weight: 700;
+        }
+
+        .empty {
+            text-align: center;
+            border: 1px dashed var(--border);
+            border-radius: 12px;
+            color: var(--muted);
+            padding: 1rem;
+        }
+
+        .note { color: var(--muted); font-size: 0.82rem; }
+
+        @media (max-width: 1060px) {
+            .toolbar { grid-template-columns: 1fr 1fr; }
+            .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        @media (max-width: 700px) {
+            .kpi-grid { grid-template-columns: 1fr; }
+            .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.55rem; }
+            .body { padding: 0.5rem; }
+            .name { font-size: 0.92rem; }
+            .price { font-size: 0.92rem; }
+            .meta { font-size: 0.76rem; }
+            .actions { grid-template-columns: 1fr 1fr; }
+            .qty { min-width: 0; padding: 0.42rem 0.3rem; font-size: 0.82rem; }
+            .actions button { padding: 0.46rem 0.38rem; font-size: 0.78rem; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">MatrixMarket</div>
+        <nav>
+            <a href="index.html">Home</a>
+            <a href="shop.html">Shop</a>
+            <a class="active" href="auto-parts.html">Auto Parts</a>
+            <a href="sellers.html">Sellers</a>
+            <a href="cart.html">Cart</a>
+            <a href="chat.html">Chat</a>
+        </nav>
+    </header>
+
+    <main class="shell">
+        <section class="hero">
+            <h1>Auto Parts</h1>
+            <p>Products tagged as <strong>cr</strong>, <strong>carparts</strong>, or other auto-part keywords appear here automatically.</p>
+            <div class="kpi-grid" id="kpiGrid"></div>
+        </section>
+
+        <section class="card">
+            <div class="toolbar">
+                <input id="searchInput" type="search" placeholder="Search auto parts, seller, location">
+                <select id="sellerFilter"><option value="">All Sellers</option></select>
+                <input id="minPrice" type="number" min="0" step="0.01" placeholder="Min Price">
+                <input id="maxPrice" type="number" min="0" step="0.01" placeholder="Max Price">
+                <select id="sortFilter">
+                    <option value="newest">Newest</option>
+                    <option value="priceAsc">Price Low</option>
+                    <option value="priceDesc">Price High</option>
+                    <option value="nameAsc">Name A-Z</option>
+                    <option value="stockDesc">Stock High</option>
+                </select>
+                <button class="btn alt" id="resetBtn" type="button">Reset</button>
+            </div>
+        </section>
+
+        <section class="card">
+            <div id="productGrid" class="grid"></div>
+        </section>
+
+        <div class="note">Auto Parts updates automatically when sellers add or edit product names/categories/descriptions.</div>
+    </main>
+
+    <script src="seller-core.js?v=20260222g"></script>
+    <script>
+        const state = { products: [], visible: [], soldOutHidden: 0, nonAutoVisible: 0 };
+        const AUTO_PARTS_REGEX = /\b(cr|car(\s|-)?parts?|auto(\s|-)?parts?|autoparts|carparts|automotive|vehicle(\s|-)?parts?|spare(\s|-)?parts?|engine|brake(s|pad|pads|disc|discs)?|bumper|radiator|clutch|gearbox|transmission|suspension|headlight|tail(\s|-)?light|mirror|windshield|tyre|tire|wheel|axle|alternator|spark(\s|-)?plug|oil(\s|-)?filter|air(\s|-)?filter)\b/i;
+
+        function byId(id) { return document.getElementById(id); }
+        function num(v) { const n = Number(v); return Number.isFinite(n) ? n : 0; }
+        function money(v) { return num(v).toFixed(2) + " GMD"; }
+        function clean(v) { return String(v == null ? "" : v).trim().toLowerCase(); }
+        function esc(v) { return String(v == null ? "" : v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;").replace(/'/g, "&#39;"); }
+
+        function isAutoPartProduct(product) {
+            const category = clean(product.category || "");
+            if (category === "cr" || category === "carparts" || category === "car parts" || category === "autoparts" || category === "auto parts") return true;
+            const text = [product.name, product.category, product.description, product.productKey].join(" ");
+            return AUTO_PARTS_REGEX.test(String(text || ""));
+        }
+
+        function readCart() {
+            const rows = SellerCore.readJSON("cart", null);
+            if (Array.isArray(rows)) return rows.slice();
+            const legacy = SellerCore.readJSON("cartItems", []);
+            return Array.isArray(legacy) ? legacy.slice() : [];
+        }
+
+        function writeCart(rows) {
+            MMStorage.setItem("cart", JSON.stringify(rows));
+            MMStorage.setItem("cartItems", JSON.stringify(rows));
+        }
+
+        function loadProducts() {
+            const all = SellerCore.getMarketplaceProducts({ includeOutOfStock: true, includeHidden: true });
+            const marketVisible = all.filter(function (p) { return p.stock > 0 && p.isVisible !== false; });
+            state.soldOutHidden = all.length - marketVisible.length;
+            state.products = marketVisible.filter(isAutoPartProduct);
+            state.nonAutoVisible = Math.max(0, marketVisible.length - state.products.length);
+        }
+
+        function populateFilters() {
+            const sellers = Array.from(new Set(state.products.map(function (p) {
+                return SellerCore.str(p.seller || p.sellerName || "Unknown Seller");
+            }).filter(Boolean))).sort();
+
+            byId("sellerFilter").innerHTML = '<option value="">All Sellers</option>' + sellers.map(function (s) {
+                return '<option value="' + esc(clean(s)) + '">' + esc(s) + '</option>';
+            }).join("");
+        }
+
+        function applyFilters() {
+            const q = clean(byId("searchInput").value);
+            const seller = clean(byId("sellerFilter").value);
+            const minPrice = num(byId("minPrice").value);
+            const maxPriceRaw = byId("maxPrice").value;
+            const maxPrice = maxPriceRaw === "" ? Number.POSITIVE_INFINITY : num(maxPriceRaw);
+            const sort = byId("sortFilter").value;
+
+            state.visible = state.products.filter(function (product) {
+                const hay = [product.name, product.category, product.seller, product.sellerEmail, product.location, product.description].join(" ").toLowerCase();
+                const sellerName = clean(product.seller || product.sellerName || "");
+                const price = num(product.price);
+                return (!q || hay.includes(q)) &&
+                    (!seller || sellerName === seller) &&
+                    (price >= minPrice) &&
+                    (price <= maxPrice);
+            });
+
+            state.visible.sort(function (a, b) {
+                if (sort === "priceAsc") return a.price - b.price;
+                if (sort === "priceDesc") return b.price - a.price;
+                if (sort === "nameAsc") return a.name.localeCompare(b.name);
+                if (sort === "stockDesc") return b.stock - a.stock;
+                return String(b.createdAt).localeCompare(String(a.createdAt));
+            });
+        }
+
+        function renderKpis() {
+            const sellers = new Set(state.visible.map(function (p) { return clean(p.seller || p.sellerEmail); })).size;
+            const stockUnits = state.visible.reduce(function (sum, p) { return sum + num(p.stock); }, 0);
+            const cards = [
+                ["Auto Parts", state.visible.length],
+                ["Active Sellers", sellers],
+                ["Stock Units", stockUnits],
+                ["Other Shop Items", state.nonAutoVisible]
+            ];
+            byId("kpiGrid").innerHTML = cards.map(function (row) {
+                return '<article class="kpi"><div class="label">' + row[0] + '</div><div class="value">' + row[1] + '</div></article>';
+            }).join("");
+        }
+
+        function stockBadge(stock) {
+            if (stock <= 3) return '<span class="chip warn">Low Stock: ' + stock + '</span>';
+            return '<span class="chip good">In Stock: ' + stock + '</span>';
+        }
+
+        function renderProducts() {
+            const box = byId("productGrid");
+            if (!state.visible.length) {
+                box.innerHTML = '<div class="empty">No auto parts found with current filters.</div>';
+                renderKpis();
+                return;
+            }
+
+            box.innerHTML = state.visible.map(function (product) {
+                const safeId = encodeURIComponent(product.id);
+                const safeSeller = encodeURIComponent(product.seller || product.sellerName || "Seller");
+                const maxQty = Math.max(1, Math.floor(num(product.stock)));
+                return '<article class="product">' +
+                    '<img class="media" loading="lazy" decoding="async" fetchpriority="low" src="' + esc((product.image || "matrixx.png").includes("via.placeholder.com") ? "matrixx.png" : (product.image || "matrixx.png")) + '" alt="' + esc(product.name) + '">' +
+                    '<div class="body">' +
+                    '<h3 class="name">' + esc(product.name) + '</h3>' +
+                    '<div class="price">' + money(product.price) + '</div>' +
+                    '<div class="meta">Seller: ' + esc(product.seller || "Unknown Seller") + '</div>' +
+                    '<div class="meta">' + esc(product.location || "Location not set") + '</div>' +
+                    '<div class="chips"><span class="chip">' + esc(product.category || "general") + '</span>' + stockBadge(maxQty) + '</div>' +
+                    '<div class="actions">' +
+                    '<input class="qty" type="number" min="1" max="' + maxQty + '" value="1" data-qty-id="' + safeId + '">' +
+                    '<button class="btn alt" data-action="add" data-id="' + safeId + '">Add</button>' +
+                    '<button class="btn" data-action="buy" data-id="' + safeId + '">Buy</button>' +
+                    '<button class="btn alt" data-action="chat" data-seller="' + safeSeller + '">Chat</button>' +
+                    '</div>' +
+                    '</div>' +
+                    '</article>';
+            }).join("");
+
+            renderKpis();
+        }
+
+        function getQtyForProduct(id, maxStock) {
+            const inputs = document.querySelectorAll("input[data-qty-id]");
+            let input = null;
+            for (let i = 0; i < inputs.length; i += 1) {
+                if (String(inputs[i].getAttribute("data-qty-id")) === String(id)) {
+                    input = inputs[i];
+                    break;
+                }
+            }
+            const qty = input ? Math.floor(num(input.value || 1)) : 1;
+            return Math.max(1, Math.min(maxStock, qty));
+        }
+
+        function productToCartItem(product, qty) {
+            return {
+                id: product.id,
+                name: product.name,
+                price: num(product.price),
+                image: product.image,
+                seller: product.seller || product.sellerName || "Unknown Seller",
+                sellerEmail: SellerCore.cleanEmail(product.sellerEmail || ""),
+                category: product.category || "general",
+                quantity: qty
+            };
+        }
+
+        function addProductToCart(product, qty, silent) {
+            if (!product || product.stock <= 0) return false;
+            const cart = readCart();
+            const safeQty = Math.max(1, Math.floor(num(qty || 1)));
+
+            const existing = cart.find(function (item) {
+                return String(item.id || "") === String(product.id) ||
+                    (clean(item.name) === clean(product.name) && clean(item.sellerEmail) === clean(product.sellerEmail));
+            });
+
+            if (existing) {
+                const next = Math.min(product.stock, Math.max(1, Math.floor(num(existing.quantity || 1))) + safeQty);
+                existing.quantity = next;
+            } else {
+                cart.push(productToCartItem(product, Math.min(product.stock, safeQty)));
+            }
+
+            writeCart(cart);
+            if (!silent) alert(product.name + " added to cart.");
+            return true;
+        }
+
+        function startChat(target) {
+            const seller = decodeURIComponent(target || "");
+            if (!seller) return;
+            MMStorage.setItem("chatWith", seller);
+            window.location.href = "chat.html?seller=" + encodeURIComponent(seller);
+        }
+
+        function buyNow(product, qty) {
+            if (!addProductToCart(product, qty, true)) return;
+            const one = productToCartItem(product, Math.max(1, Math.min(product.stock, qty)));
+            const subtotal = one.price * one.quantity;
+            const shipping = subtotal >= 500 ? 0 : 25;
+            MMStorage.setItem("checkoutCart", JSON.stringify([one]));
+            MMStorage.setItem("checkoutMeta", JSON.stringify({
+                coupon: null,
+                subtotal: subtotal,
+                discount: 0,
+                shipping: shipping,
+                total: subtotal + shipping
+            }));
+            window.location.href = "checkout.html";
+        }
+
+        function refresh() {
+            loadProducts();
+            populateFilters();
+            applyFilters();
+            renderProducts();
+        }
+
+        function initAutoPartsPage() {
+            refresh();
+
+            ["searchInput", "sellerFilter", "sortFilter", "minPrice", "maxPrice"].forEach(function (id) {
+                byId(id).addEventListener(id.includes("Input") ? "input" : "change", function () {
+                    applyFilters();
+                    renderProducts();
+                });
+            });
+
+            byId("resetBtn").addEventListener("click", function () {
+                byId("searchInput").value = "";
+                byId("sellerFilter").value = "";
+                byId("minPrice").value = "";
+                byId("maxPrice").value = "";
+                byId("sortFilter").value = "newest";
+                refresh();
+            });
+
+            byId("productGrid").addEventListener("click", function (event) {
+                const btn = event.target.closest("button[data-action]");
+                if (!btn) return;
+                if (btn.dataset.action === "chat") {
+                    startChat(btn.dataset.seller || "");
+                    return;
+                }
+                const id = decodeURIComponent(btn.dataset.id || "");
+                const product = state.products.find(function (p) { return String(p.id) === id; });
+                if (!product) return;
+                const qty = getQtyForProduct(id, Math.max(1, product.stock));
+                if (btn.dataset.action === "add") addProductToCart(product, qty, false);
+                if (btn.dataset.action === "buy") buyNow(product, qty);
+            });
+
+            window.addEventListener("storage", refresh);
+        }
+
+        function startAutoPartsPage() {
+            const ready = window.MMStorage && window.MMStorage.ready;
+            if (ready && typeof ready.then === "function") {
+                ready.finally(initAutoPartsPage);
+                return;
+            }
+            initAutoPartsPage();
+        }
+
+        if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", startAutoPartsPage);
+        else startAutoPartsPage();
+    </script>
+    <script defer src="upgrade.js"></script>
+  <script defer src="sw-register.js?v=20260226a"></script>
+  <script defer src="site-performance.js?v=20260226a"></script>
+</body>
+</html>
+
+
