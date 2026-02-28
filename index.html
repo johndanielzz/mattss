@@ -7,10 +7,16 @@
   <meta name="theme-color" content="#131921" />
   <title>MatrixMarket - Smart Home</title>
   <link rel="icon" type="image/x-icon" href="matrixx.png" />
+  <link rel="dns-prefetch" href="//matrixmarket-f72e0-default-rtdb.firebaseio.com" />
+  <link rel="preconnect" href="https://matrixmarket-f72e0-default-rtdb.firebaseio.com" crossorigin />
+  <link rel="dns-prefetch" href="//identitytoolkit.googleapis.com" />
+  <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin />
   <link rel="preload" as="image" href="matrixx.png" />
+  <link rel="preload" as="style" href="index-home.css?v=20260228a" />
+  <link rel="preload" as="script" href="index-home.js?v=20260228a" />
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="upgrade.css" />
-  <link rel="stylesheet" href="index-home.css?v=20260227b" />
+  <link rel="stylesheet" href="index-home.css?v=20260228a" />
   <style>
     .mm-skip-link {
       position: fixed;
@@ -64,8 +70,8 @@
       }
     }
   </style>
-  <script src="firebase-online-storage.js?v=20260224c"></script>
-  <script src="seller-core.js?v=20260224a"></script>
+  <script defer src="firebase-online-storage.js?v=20260224c"></script>
+  <script defer src="seller-core.js?v=20260224a"></script>
 </head>
 <body>
   <a class="mm-skip-link" href="#mainContent">Skip to products</a>
@@ -335,12 +341,12 @@
           <div class="mm-meta">Use Sync for immediate refresh. Auto mode updates every 30 seconds when enabled.</div>
         </article>
         <article class="mm-item">
-          <strong>Custpmer care</strong>
-          <div class="mm-meta">Having any issues with your oders the sellers you can contact the customer care using our agent page </div>
+          <strong>Keyboard Controls</strong>
+          <div class="mm-meta">Press "/" to jump to search and press Escape to close the product modal.</div>
         </article>
         <article class="mm-item">
-          <strong>Sellers Wrning </strong>
-          <div class="mm-meta">Sellers  wont be able to buy products or use  this website until you use a new email that havent been registed for seller </div>
+          <strong>Shareable Filters</strong>
+          <div class="mm-meta">Use Share Filters to copy a URL with all your active filters and view state.</div>
         </article>
         <article class="mm-item">
           <strong>Data Portability</strong>
@@ -370,12 +376,11 @@
 
   <div id="toastWrap" class="mm-toast-wrap" aria-live="polite"></div>
 
-  <script src="index-home.js?v=20260225a"></script>
-  <script defer src="sw-register.js?v=20260226a"></script>
+  <script defer src="index-home.js?v=20260228a"></script>
+  <script defer src="sw-register.js?v=20260228a"></script>
   <script defer src="site-performance.js?v=20260226a"></script>
 </body>
 </html>
-
 
 
 

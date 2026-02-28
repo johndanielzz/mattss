@@ -45,7 +45,7 @@
     }
 
     .brand { font-weight: 900; letter-spacing: 0.02em; }
-    nav { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+    nav { display: flex; gap: 0.4rem; flex-wrap: wrap; max-width: 100%; overflow-x: auto; padding-bottom: 2px; }
 
     nav a {
       text-decoration: none;
@@ -207,6 +207,7 @@
     @media (max-width: 560px) {
       .page { width: min(1240px, calc(100% - 0.6rem)); }
       .toolbar, .stats, .detail-grid { grid-template-columns: 1fr; }
+      nav a { white-space: nowrap; }
     }
   </style>
   <script src="firebase-online-storage.js"></script>
@@ -330,6 +331,27 @@
         PURCHASES: "purchases",
         SUPPORT: "supportTickets"
       };
+      const BUYER_SCOPE_PREFIX = "__mm_buyer__";
+      const SCOPED_EXACT_KEYS = new Set([
+        KEYS.BUYER,
+        KEYS.ORDERS,
+        KEYS.ORDER_SNAPSHOTS,
+        KEYS.CART,
+        KEYS.CART_ITEMS,
+        KEYS.CHECKOUT_CART,
+        KEYS.CHECKOUT_META
+      ]);
+      const SCOPED_KEY_PREFIXES = ["buyerOrdersByEmail:", "buyerOrdersByPhone:", "orderItemsById:"];
+      const LEGACY_READ_THROUGH_KEYS = new Set([
+        KEYS.BUYER,
+        KEYS.ORDERS,
+        KEYS.ORDER_SNAPSHOTS,
+        KEYS.CART,
+        KEYS.CART_ITEMS,
+        KEYS.CHECKOUT_CART,
+        KEYS.CHECKOUT_META
+      ]);
+      let cachedUserScope = null;
 
       const state = {
         identity: { name: "", email: "", phone: "", orderId: "" },
@@ -368,6 +390,50 @@
         return { getItem: function () { return null; }, setItem: function () {} };
       }
 
+      function normalizeScopeToken(value) {
+        const token = str(value).trim().toLowerCase();
+        if (!token) return "";
+        return token.replace(/[^a-z0-9._:@-]+/g, "_");
+      }
+
+      function parseSimpleJson(raw) {
+        if (raw == null || raw === "") return null;
+        try { return JSON.parse(raw); } catch (_) { return null; }
+      }
+
+      function resolveUserScopeToken() {
+        const store = storage();
+        const current = parseSimpleJson(store.getItem(KEYS.USER)) || parseSimpleJson(store.getItem(KEYS.LOGGED)) || {};
+        const userEmail = normalizeScopeToken(current && current.email);
+        if (userEmail) return userEmail;
+        const uid = normalizeScopeToken(current && (current.id || current.uid || current.userId));
+        if (uid) return "id_" + uid;
+        const userPhone = normalizeScopeToken(current && current.phone);
+        if (userPhone) return "phone_" + userPhone;
+        const userName = normalizeScopeToken(current && (current.username || current.name || current.fullName));
+        if (userName) return "name_" + userName;
+        return "guest";
+      }
+
+      function userScopeToken() {
+        if (cachedUserScope) return cachedUserScope;
+        cachedUserScope = resolveUserScopeToken();
+        return cachedUserScope;
+      }
+
+      function shouldScopeKey(key) {
+        const value = str(key || "");
+        if (SCOPED_EXACT_KEYS.has(value)) return true;
+        return SCOPED_KEY_PREFIXES.some(function (prefix) { return value.indexOf(prefix) === 0; });
+      }
+
+      function scopedStorageKey(key) {
+        return BUYER_SCOPE_PREFIX + userScopeToken() + "__" + str(key || "");
+      }
+      function guestScopedStorageKey(key) {
+        return BUYER_SCOPE_PREFIX + "guest__" + str(key || "");
+      }
+
       function parse(raw, fallback) {
         if (raw == null || raw === "") return fallback;
         let value = raw;
@@ -384,8 +450,42 @@
         return value == null ? fallback : value;
       }
 
-      function read(key, fallback) { try { return parse(storage().getItem(key), fallback); } catch (_) { return fallback; } }
-      function write(key, value) { try { storage().setItem(key, JSON.stringify(value)); return true; } catch (_) { return false; } }
+      function read(key, fallback) {
+        try {
+          const store = storage();
+          const target = str(key || "");
+          if (shouldScopeKey(target)) {
+            const scopedRaw = store.getItem(scopedStorageKey(target));
+            const scopedValue = parse(scopedRaw, null);
+            if (scopedValue != null) return scopedValue;
+            const allowLegacy = LEGACY_READ_THROUGH_KEYS.has(target) || SCOPED_KEY_PREFIXES.some(function (prefix) {
+              return target.indexOf(prefix) === 0;
+            });
+            if (allowLegacy) {
+              const guestRaw = store.getItem(guestScopedStorageKey(target));
+              const guestValue = parse(guestRaw, null);
+              if (guestValue != null) return guestValue;
+              const legacyValue = parse(store.getItem(target), null);
+              if (legacyValue != null) return legacyValue;
+            }
+            if (userScopeToken() !== "guest") return fallback;
+          }
+          return parse(store.getItem(target), fallback);
+        } catch (_) {
+          return fallback;
+        }
+      }
+
+      function write(key, value) {
+        try {
+          const target = str(key || "");
+          const storageKey = shouldScopeKey(target) ? scopedStorageKey(target) : target;
+          storage().setItem(storageKey, JSON.stringify(value));
+          return true;
+        } catch (_) {
+          return false;
+        }
+      }
 
       function toArray(rows) {
         if (Array.isArray(rows)) return rows.slice();
@@ -483,9 +583,9 @@
         const user = read(KEYS.USER, null) || read(KEYS.LOGGED, null) || {};
         const buyer = read(KEYS.BUYER, null) || {};
         return {
-          name: str(q.get("name") || user.fullName || user.name || buyer.name || ""),
-          email: email(q.get("email") || user.email || buyer.email || ""),
-          phone: phone(q.get("phone") || user.phone || buyer.phone || ""),
+          name: str(user.fullName || user.name || buyer.name || q.get("name") || ""),
+          email: email(user.email || buyer.email || q.get("email") || ""),
+          phone: phone(user.phone || buyer.phone || q.get("phone") || ""),
           orderId: str(q.get("orderId") || "")
         };
       }

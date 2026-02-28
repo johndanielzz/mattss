@@ -50,7 +50,7 @@
     <div class="sel-foot">Order history and queue view</div>
   </main>
 
-  <script src="seller-core.js?v=20260222g"></script>
+  <script src="seller-core.js?v=20260228a"></script>
   <script>
     let seller = null;
     const state = { rows: [], filtered: [] };
@@ -62,6 +62,18 @@
     }
 
     function readRows(){
+      function signature(row) {
+        const qty = Math.max(1, Math.floor(SellerCore.num(row.quantity || 1)));
+        const amount = SellerCore.num(row.amount || 0).toFixed(2);
+        return [
+          SellerCore.str(row.orderId || "").toLowerCase(),
+          SellerCore.str(row.buyerEmail || "").toLowerCase(),
+          SellerCore.str(row.product || "").toLowerCase(),
+          qty,
+          amount
+        ].join("|");
+      }
+
       const sales = SellerCore.getPurchasesForSeller(seller).map(function (r) {
         return {
           source: "purchase",
@@ -92,14 +104,26 @@
         };
       });
 
-      const all = sales.concat(queue);
-      const seen = new Set();
-      state.rows = all.filter(function (r) {
-        const sig = [r.orderId, r.buyerEmail, r.product, r.quantity, r.amount, r.date].join("|");
-        if (seen.has(sig)) return false;
-        seen.add(sig);
-        return true;
+      const merged = new Map();
+      sales.forEach(function (row) {
+        merged.set(signature(row), row);
       });
+      queue.forEach(function (row) {
+        const sig = signature(row);
+        const prev = merged.get(sig);
+        if (!prev) {
+          merged.set(sig, row);
+          return;
+        }
+        if (prev.source !== "queue") {
+          merged.set(sig, { ...prev, ...row, source: "queue" });
+          return;
+        }
+        const prevDate = String(prev.date || "");
+        const nextDate = String(row.date || "");
+        merged.set(sig, nextDate >= prevDate ? row : prev);
+      });
+      state.rows = Array.from(merged.values());
     }
 
     function applyFilters(){

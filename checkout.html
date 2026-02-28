@@ -42,6 +42,17 @@
     .empty{text-align:center;color:#6b7280;border:1px dashed #d1d5db;border-radius:10px;padding:16px}
     .hint{margin-top:8px;color:#6b7280;font-size:.82rem}
     @media (max-width:920px){.page{grid-template-columns:1fr}}
+    @media (max-width:700px){
+      header{align-items:flex-start;padding:12px 10px}
+      nav{width:100%;overflow-x:auto;padding-bottom:2px}
+      nav a{white-space:nowrap}
+      .inline-row{grid-template-columns:1fr}
+      .order-item{grid-template-columns:1fr}
+      .order-item img{width:100%;height:180px}
+      .item-tools{justify-items:start}
+      .actions .btn{width:100%;justify-content:center}
+      .chips{width:100%}
+    }
   </style>
   <link rel="stylesheet" href="upgrade.css">
   <script src="firebase-online-storage.js"></script>
@@ -143,6 +154,34 @@
       onlineReady: false,
       cartSource: "checkout"
     };
+    const BUYER_SCOPE_PREFIX = "__mm_buyer__";
+    const SCOPED_EXACT_KEYS = new Set([
+      "cart",
+      "cartItems",
+      "buyerInfo",
+      "buyerInfoDraft",
+      "checkoutCart",
+      "checkoutMeta",
+      "checkoutDraft",
+      "cartCoupon",
+      "cartDeliveryMode",
+      "paymentStatus",
+      "buyerOrders",
+      "orderLineSnapshots"
+    ]);
+    const SCOPED_KEY_PREFIXES = ["buyerOrdersByEmail:", "buyerOrdersByPhone:", "orderItemsById:"];
+    const LEGACY_READ_THROUGH_KEYS = new Set([
+      "cart",
+      "cartItems",
+      "buyerInfo",
+      "buyerInfoDraft",
+      "checkoutCart",
+      "checkoutMeta",
+      "checkoutDraft",
+      "cartCoupon",
+      "cartDeliveryMode"
+    ]);
+    let cachedUserScope = null;
 
     function byId(id) { return document.getElementById(id); }
     const storage = (function () {
@@ -191,28 +230,116 @@
       const base = option === "express" ? "Estimated next day delivery." : "Estimated delivery in 2-3 days.";
       return dateValue ? (base + " Requested date: " + dateValue + ".") : base;
     }
+    function parseStoredJson(raw, fallback) {
+      if (raw == null || raw === "") return fallback;
+      try {
+        const parsed = JSON.parse(raw);
+        return parsed == null ? fallback : parsed;
+      } catch (_) {
+        return fallback;
+      }
+    }
+    function parseDeepJson(raw, fallback) {
+      if (raw == null || raw === "") return fallback;
+      let value = raw;
+      for (let i = 0; i < 3; i += 1) {
+        if (typeof value !== "string") break;
+        const trimmed = value.trim();
+        if (!trimmed) return fallback;
+        try {
+          value = JSON.parse(trimmed);
+        } catch (_) {
+          return i === 0 ? fallback : value;
+        }
+      }
+      return value == null ? fallback : value;
+    }
+    function normalizeScopeToken(value) {
+      const token = String(value == null ? "" : value).trim().toLowerCase();
+      if (!token) return "";
+      return token.replace(/[^a-z0-9._:@-]+/g, "_");
+    }
+    function resolveUserScopeToken() {
+      const current = parseStoredJson(storage && storage.getItem("currentUser"), null) || parseStoredJson(storage && storage.getItem("loggedInUser"), null) || {};
+      const email = normalizeScopeToken(current && current.email);
+      if (email) return email;
+      const uid = normalizeScopeToken(current && (current.id || current.uid || current.userId));
+      if (uid) return "id_" + uid;
+      const phone = normalizeScopeToken(current && current.phone);
+      if (phone) return "phone_" + phone;
+      const name = normalizeScopeToken(current && (current.username || current.name || current.fullName));
+      if (name) return "name_" + name;
+      return "guest";
+    }
+    function userScopeToken() {
+      if (cachedUserScope) return cachedUserScope;
+      cachedUserScope = resolveUserScopeToken();
+      return cachedUserScope;
+    }
+    function shouldScopeKey(key) {
+      const value = String(key || "");
+      if (SCOPED_EXACT_KEYS.has(value)) return true;
+      return SCOPED_KEY_PREFIXES.some(function (prefix) { return value.indexOf(prefix) === 0; });
+    }
+    function scopedStorageKey(key) {
+      return BUYER_SCOPE_PREFIX + userScopeToken() + "__" + String(key || "");
+    }
+    function guestScopedStorageKey(key) {
+      return BUYER_SCOPE_PREFIX + "guest__" + String(key || "");
+    }
     function rawGet(key) {
       if (!storage) return null;
-      try { return storage.getItem(key); } catch (_) { return null; }
+      const target = String(key || "");
+      try {
+        if (shouldScopeKey(target)) {
+          const scoped = storage.getItem(scopedStorageKey(target));
+          if (scoped != null && scoped !== "") return scoped;
+          if (LEGACY_READ_THROUGH_KEYS.has(target)) {
+            const guestScoped = storage.getItem(guestScopedStorageKey(target));
+            if (guestScoped != null && guestScoped !== "") return guestScoped;
+            const legacy = storage.getItem(target);
+            if (legacy != null && legacy !== "") return legacy;
+          }
+          if (userScopeToken() !== "guest") return null;
+        }
+        return storage.getItem(target);
+      } catch (_) { return null; }
     }
     function rawSet(key, value) {
       if (!storage) return false;
-      try { storage.setItem(key, value); return true; } catch (error) { console.warn("Storage write failed for key:", key, error); return false; }
+      const target = String(key || "");
+      try {
+        storage.setItem(shouldScopeKey(target) ? scopedStorageKey(target) : target, value);
+        return true;
+      } catch (error) { console.warn("Storage write failed for key:", key, error); return false; }
     }
     function rawRemove(key) {
       if (!storage) return false;
-      try { storage.removeItem(key); return true; } catch (error) { console.warn("Storage remove failed for key:", key, error); return false; }
+      const target = String(key || "");
+      try {
+        storage.removeItem(shouldScopeKey(target) ? scopedStorageKey(target) : target);
+        return true;
+      } catch (error) { console.warn("Storage remove failed for key:", key, error); return false; }
     }
     function read(key, fallback) {
       try {
-        const data = JSON.parse(rawGet(key) || "null");
-        return data ?? fallback;
+        return parseDeepJson(rawGet(key), fallback);
       } catch (_) {
         return fallback;
       }
     }
     function write(key, value) {
       return rawSet(key, JSON.stringify(value));
+    }
+    function readBridgePayload() {
+      try {
+        const raw = String(window.name || "").trim();
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === "object" ? parsed : null;
+      } catch (_) {
+        return null;
+      }
     }
     function ensureOnlineStorage() {
       state.onlineReady = resolveOnlineReady() || apiReady();
@@ -538,6 +665,49 @@
         etaText: etaFromOption(mode, ""),
         total: total
       };
+    }
+
+    function isMetaAlignedWithCart(meta, cartRows) {
+      if (!meta || typeof meta !== "object") return false;
+      const cart = normalizeCart(cartRows);
+      if (!cart.length) return true;
+      const subtotal = cart.reduce(function (sum, item) {
+        return sum + (num(item.price) * Math.max(1, Math.floor(num(item.quantity || 1))));
+      }, 0);
+      const metaSubtotal = num(meta.subtotal);
+      return Math.abs(subtotal - metaSubtotal) < 0.01;
+    }
+
+    function resolveInitialCartBundle() {
+      const candidates = [];
+      function addCandidate(rows, source, score) {
+        const cart = normalizeCart(rows);
+        if (!cart.length) return;
+        candidates.push({ cart: cart, source: source, score: num(score) });
+      }
+
+      addCandidate(read("checkoutCart", []), "checkout", 50);
+      addCandidate(read("cart", []), "cart", 40);
+
+      const bridge = readBridgePayload();
+      if (bridge) {
+        if (bridge.mmCheckoutBridge && Array.isArray(bridge.mmCheckoutBridge.cart)) {
+          addCandidate(bridge.mmCheckoutBridge.cart, "window-checkout-bridge", 60);
+        }
+        if (bridge.mmCartBridge && Array.isArray(bridge.mmCartBridge.cart)) {
+          addCandidate(bridge.mmCartBridge.cart, "window-cart-bridge", 55);
+        }
+      }
+
+      if (!candidates.length) {
+        return { cart: [], source: "checkout" };
+      }
+
+      candidates.sort(function (a, b) {
+        if (b.score !== a.score) return b.score - a.score;
+        return b.cart.length - a.cart.length;
+      });
+      return { cart: candidates[0].cart, source: candidates[0].source };
     }
 
     function setPlacing(active) {
@@ -951,19 +1121,21 @@
         showError("Online storage is unavailable. Orders cannot persist until storage or API is connected.");
       }
 
-      state.cart = normalizeCart(read("checkoutCart", []));
-      state.cartSource = state.cart.length ? "checkout" : "cart";
+      const bundle = resolveInitialCartBundle();
+      state.cart = bundle.cart;
+      state.cartSource = bundle.source;
       state.buyer = read("buyerInfo", null);
       state.meta = read("checkoutMeta", null);
-      if (!state.cart.length) {
-        const fallbackCart = normalizeCart(read("cart", []));
-        if (fallbackCart.length) {
-          state.cart = fallbackCart;
-          state.cartSource = "cart";
-          if (!state.meta) state.meta = deriveMetaFromCart(fallbackCart);
-          write("checkoutCart", state.cart);
-          write("checkoutMeta", state.meta);
-        }
+
+      if (!isMetaAlignedWithCart(state.meta, state.cart)) {
+        state.meta = state.cart.length ? deriveMetaFromCart(state.cart) : null;
+      } else if (!state.meta && state.cart.length) {
+        state.meta = deriveMetaFromCart(state.cart);
+      }
+
+      if (state.cart.length) {
+        write("checkoutCart", state.cart);
+        if (state.meta) write("checkoutMeta", state.meta);
       }
       state.isSellerBuyer = detectSellerBuyerAccount();
 

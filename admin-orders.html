@@ -49,7 +49,7 @@
         <div class="adm-foot">Order status changes are logged in admin logs.</div>
     </main>
 
-    <script src="admin-core.js?v=20260222c"></script>
+    <script src="admin-core.js?v=20260228a"></script>
     <script src="api-client.js"></script>
     <script>
         const state = { rows: [], filtered: [] };
@@ -120,12 +120,13 @@
             });
         }
 
-        function actions(index) {
+        function actions(orderId) {
+            const safeId = encodeURIComponent(AdminCore.str(orderId || ""));
             return '<div class="adm-inline-actions">' +
-                '<button class="btn-adm" data-action="pending" data-id="' + index + '">Pending</button>' +
-                '<button class="btn-adm success" data-action="approved" data-id="' + index + '">Approve</button>' +
-                '<button class="btn-adm success" data-action="delivered" data-id="' + index + '">Deliver</button>' +
-                '<button class="btn-adm danger" data-action="declined" data-id="' + index + '">Decline</button>' +
+                '<button class="btn-adm" data-action="pending" data-id="' + safeId + '">Pending</button>' +
+                '<button class="btn-adm success" data-action="approved" data-id="' + safeId + '">Approve</button>' +
+                '<button class="btn-adm success" data-action="delivered" data-id="' + safeId + '">Deliver</button>' +
+                '<button class="btn-adm danger" data-action="declined" data-id="' + safeId + '">Decline</button>' +
                 '</div>';
         }
 
@@ -152,7 +153,7 @@
                     td("Status", AdminCore.badge(r.status)) +
                     td("Method", r.paymentMethod) +
                     td("Date", AdminCore.fmtDate(r.placedAt)) +
-                    td("Actions", actions(r.index)) +
+                    td("Actions", actions(r.id)) +
                     '</tr>';
             }).join("") + '</tbody>';
         }
@@ -163,15 +164,19 @@
             renderTable();
         }
 
-        async function updateStatus(index, status) {
+        async function updateStatus(orderId, status) {
             const map = {
                 pending: "pending",
                 approved: "approved",
                 delivered: "delivered",
                 declined: "declined"
             };
-            const i = Number(index);
-            const row = Number.isInteger(i) ? state.rows[i] : null;
+            let targetId = AdminCore.str(orderId || "");
+            try { targetId = decodeURIComponent(targetId); } catch (_) {}
+            if (!targetId) return;
+            const row = state.rows.find(function (item) {
+                return AdminCore.str(item.id).toLowerCase() === targetId.toLowerCase();
+            }) || null;
             if (!row) return;
 
             const next = map[status] || "pending";
@@ -183,7 +188,7 @@
                     return;
                 }
             } else {
-                AdminCore.updateOrderStatus(i, next);
+                AdminCore.updateOrderStatus(targetId, next);
             }
             await refresh();
         }
@@ -207,7 +212,7 @@
 
             document.getElementById("markDeliveredBtn").addEventListener("click", async function () {
                 for (const row of state.filtered) {
-                    await updateStatus(row.index, "delivered");
+                    await updateStatus(row.id, "delivered");
                 }
                 AdminCore.log("bulk_orders_delivered", { count: state.filtered.length });
                 await refresh();
@@ -255,7 +260,5 @@
   <script defer src="site-performance.js?v=20260226a"></script>
 </body>
 </html>
-
-
 
 

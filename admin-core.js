@@ -1,17 +1,208 @@
 (function () {
   const WITHDRAWAL_CHARGE_PER_10 = 2;
+  const BUYER_SCOPE_PREFIX = "__mm_buyer__";
 
-  function readJSON(key, fallback) {
+  function storageRef() {
+    if (window.MMStorage && typeof window.MMStorage.getItem === "function") return window.MMStorage;
     try {
-      const data = JSON.parse(MMStorage.getItem(key) || "null");
-      return data ?? fallback;
-    } catch (_err) {
-      return fallback;
+      if (window.localStorage && typeof window.localStorage.getItem === "function") return window.localStorage;
+    } catch (_) {}
+    return null;
+  }
+
+  function parseDeepJSON(raw, fallback) {
+    if (raw == null || raw === "") return fallback;
+    let value = raw;
+    for (let i = 0; i < 3; i += 1) {
+      if (typeof value !== "string") break;
+      const trimmed = value.trim();
+      if (!trimmed) return fallback;
+      try {
+        value = JSON.parse(trimmed);
+      } catch (_) {
+        return i === 0 ? fallback : value;
+      }
+    }
+    return value == null ? fallback : value;
+  }
+
+  function readRaw(key) {
+    const store = storageRef();
+    if (!store) return null;
+    try {
+      return store.getItem(String(key));
+    } catch (_) {
+      return null;
     }
   }
 
+  function writeRaw(key, value) {
+    const store = storageRef();
+    if (!store) return false;
+    try {
+      store.setItem(String(key), String(value == null ? "" : value));
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function listStorageKeys() {
+    const store = storageRef();
+    if (!store) return [];
+
+    if (typeof store.keys === "function") {
+      try {
+        const rows = store.keys();
+        if (Array.isArray(rows)) return rows.map(function (key) { return String(key); });
+      } catch (_) {}
+    }
+
+    const out = [];
+    const seen = new Set();
+    const total = Number(store.length);
+    if (!Number.isInteger(total) || total <= 0 || typeof store.key !== "function") return out;
+    for (let i = 0; i < total; i += 1) {
+      try {
+        const key = store.key(i);
+        if (key == null) continue;
+        const next = String(key);
+        if (!seen.has(next)) {
+          seen.add(next);
+          out.push(next);
+        }
+      } catch (_) {}
+    }
+    return out;
+  }
+
+  function sameOrderId(a, b) {
+    const left = String(a == null ? "" : a).trim().toLowerCase();
+    const right = String(b == null ? "" : b).trim().toLowerCase();
+    return Boolean(left) && Boolean(right) && left === right;
+  }
+
+  function addUniqueKey(list, key) {
+    const next = String(key == null ? "" : key).trim();
+    if (!next) return;
+    if (!list.includes(next)) list.push(next);
+  }
+
+  function isBuyerOrderStorageKey(key) {
+    const target = String(key == null ? "" : key).trim();
+    if (!target) return false;
+    if (target === "buyerOrders") return true;
+    if (target.indexOf("buyerOrdersByEmail:") === 0) return true;
+    if (target.indexOf("buyerOrdersByPhone:") === 0) return true;
+    return target.indexOf(BUYER_SCOPE_PREFIX) === 0 && target.indexOf("__buyerOrders") > 0;
+  }
+
+  function orderRowId(row) {
+    return str(row && (row.id || row.orderId || row.orderNumber) || "");
+  }
+
+  function orderTs(row) {
+    const a = new Date(row && (row.updatedAt || row.placedAt || row.createdAt || row.date) || "").getTime();
+    return Number.isFinite(a) ? a : 0;
+  }
+
+  function findOrderStorageKeys(extra) {
+    const keys = [];
+    addUniqueKey(keys, "buyerOrders");
+    (Array.isArray(extra) ? extra : []).forEach(function (key) { addUniqueKey(keys, key); });
+    listStorageKeys().forEach(function (key) {
+      if (isBuyerOrderStorageKey(key)) addUniqueKey(keys, key);
+    });
+    return keys;
+  }
+
+  function patchOrderRowsInKey(storageKey, orderId, nextStatus, updatedAt) {
+    const rows = readJSON(storageKey, null);
+    if (!Array.isArray(rows) || !rows.length) return false;
+    let changed = false;
+    const nextRows = rows.map(function (row) {
+      if (!sameOrderId(orderRowId(row), orderId)) return row;
+      changed = true;
+      return { ...row, status: nextStatus, updatedAt: updatedAt };
+    });
+    if (!changed) return false;
+    return writeJSON(storageKey, nextRows);
+  }
+
+  function patchSnapshotsByOrderId(orderId, nextStatus, updatedAt) {
+    const mapKeys = ["orderLineSnapshots"];
+    listStorageKeys().forEach(function (key) {
+      if (key.indexOf(BUYER_SCOPE_PREFIX) === 0 && key.endsWith("__orderLineSnapshots")) addUniqueKey(mapKeys, key);
+    });
+
+    let changed = false;
+    mapKeys.forEach(function (storageKey) {
+      const map = readJSON(storageKey, null);
+      if (!map || typeof map !== "object" || Array.isArray(map)) return;
+      const hitKey = Object.keys(map).find(function (key) { return sameOrderId(key, orderId); });
+      if (!hitKey || !map[hitKey] || typeof map[hitKey] !== "object") return;
+      map[hitKey] = { ...map[hitKey], status: nextStatus, updatedAt: updatedAt };
+      if (writeJSON(storageKey, map)) changed = true;
+    });
+
+    const directKeys = ["orderItemsById:" + orderId];
+    listStorageKeys().forEach(function (key) {
+      if (key.indexOf(BUYER_SCOPE_PREFIX) !== 0) return;
+      const tail = key.split("__orderItemsById:")[1];
+      if (sameOrderId(tail, orderId)) addUniqueKey(directKeys, key);
+    });
+    directKeys.forEach(function (storageKey) {
+      const row = readJSON(storageKey, null);
+      if (!row || typeof row !== "object" || Array.isArray(row)) return;
+      const next = { ...row, status: nextStatus, updatedAt: updatedAt };
+      if (writeJSON(storageKey, next)) changed = true;
+    });
+
+    return changed;
+  }
+
+  function patchQueueByOrderId(orderId, nextStatus, updatedAt) {
+    const queues = readJSON("sellerOrderQueues", {});
+    if (!queues || typeof queues !== "object") return false;
+    let changed = false;
+    Object.keys(queues).forEach(function (queueKey) {
+      const rows = Array.isArray(queues[queueKey]) ? queues[queueKey] : [];
+      queues[queueKey] = rows.map(function (row) {
+        const id = str(row && (row.orderId || row.id || row.orderNumber) || "");
+        if (!sameOrderId(id, orderId)) return row;
+        changed = true;
+        return { ...row, status: nextStatus, updatedAt: updatedAt };
+      });
+    });
+    if (!changed) return false;
+    return writeJSON("sellerOrderQueues", queues);
+  }
+
+  function patchPurchasesByOrderId(orderId, nextStatus, updatedAt) {
+    const rows = readJSON("purchases", []);
+    if (!Array.isArray(rows) || !rows.length) return false;
+    let changed = false;
+    const nextRows = rows.map(function (row) {
+      const id = str(row && (row.orderId || row.id || row.orderNumber) || "");
+      if (!sameOrderId(id, orderId)) return row;
+      changed = true;
+      return { ...row, status: nextStatus, updatedAt: updatedAt };
+    });
+    if (!changed) return false;
+    return writeJSON("purchases", nextRows);
+  }
+
+  function findOrderById(orderId) {
+    const all = getOrders();
+    return all.find(function (row) { return sameOrderId(orderRowId(row), orderId); }) || null;
+  }
+
+  function readJSON(key, fallback) {
+    return parseDeepJSON(readRaw(key), fallback);
+  }
+
   function writeJSON(key, value) {
-    MMStorage.setItem(key, JSON.stringify(value));
+    writeRaw(key, JSON.stringify(value));
   }
 
   function toArray(value, opts) {
@@ -238,8 +429,54 @@
   }
 
   function getOrders() {
-    const orders = readJSON("buyerOrders", []);
-    return toArray(orders, { injectId: true });
+    const keys = findOrderStorageKeys();
+    const gathered = [];
+
+    keys.forEach(function (storageKey) {
+      const rows = readJSON(storageKey, null);
+      if (!Array.isArray(rows)) return;
+      rows.forEach(function (row, index) {
+        if (!row || typeof row !== "object") return;
+        const next = { ...row };
+        if (!next.id) {
+          const fallbackId = str(next.orderId || next.orderNumber || "");
+          if (fallbackId) next.id = fallbackId;
+        }
+        next.__sourceKey = storageKey;
+        next.__sourceIndex = index;
+        gathered.push(next);
+      });
+    });
+
+    if (!gathered.length) {
+      const legacy = readJSON("buyerOrders", []);
+      return toArray(legacy, { injectId: true });
+    }
+
+    const deduped = new Map();
+    gathered.forEach(function (row, index) {
+      const id = orderRowId(row);
+      const emailKey = cleanEmail(row.email || row.buyerEmail || "");
+      const phoneKey = str(row.phone || row.buyerPhone || "");
+      const dateKey = str(row.placedAt || row.createdAt || row.date || row.updatedAt || "");
+      const dedupeKey = id
+        ? ("id:" + id.toLowerCase())
+        : ("anon:" + emailKey + "|" + phoneKey + "|" + dateKey + "|" + index);
+
+      const prev = deduped.get(dedupeKey);
+      if (!prev) {
+        deduped.set(dedupeKey, row);
+        return;
+      }
+      const merged = orderTs(row) >= orderTs(prev)
+        ? { ...prev, ...row }
+        : { ...row, ...prev };
+      deduped.set(dedupeKey, merged);
+    });
+
+    return Array.from(deduped.values()).sort(function (a, b) {
+      return orderTs(b) - orderTs(a);
+    });
   }
 
   function setOrders(orders) {
@@ -426,19 +663,49 @@
     return true;
   }
 
-  function updateOrderStatus(index, status) {
-    const orders = getOrders();
-    if (!orders[index]) return false;
-    const prev = str(orders[index].status || "pending");
-    orders[index].status = str(status || "pending");
-    orders[index].updatedAt = new Date().toISOString();
-    setOrders(orders);
+  function resolveOrderIdTarget(target) {
+    const raw = str(target);
+    if (raw && !/^\d+$/.test(raw)) return raw;
+    const index = Number(target);
+    if (Number.isInteger(index) && index >= 0) {
+      const rows = getOrders();
+      if (rows[index]) {
+        const fromRow = orderRowId(rows[index]);
+        if (fromRow) return fromRow;
+      }
+    }
+    return raw;
+  }
+
+  function updateOrderStatus(target, status) {
+    const orderId = resolveOrderIdTarget(target);
+    if (!orderId) return false;
+
+    const nextStatus = str(status || "pending");
+    const updatedAt = new Date().toISOString();
+    const prevRow = findOrderById(orderId);
+    const prevStatus = str(prevRow && prevRow.status || "pending");
+
+    const extraKeys = [];
+    const byEmail = cleanEmail(prevRow && (prevRow.email || prevRow.buyerEmail) || "");
+    const byPhone = str(prevRow && (prevRow.phone || prevRow.buyerPhone) || "").replace(/\D+/g, "");
+    if (byEmail) addUniqueKey(extraKeys, "buyerOrdersByEmail:" + byEmail);
+    if (byPhone) addUniqueKey(extraKeys, "buyerOrdersByPhone:" + byPhone);
+
+    let changed = false;
+    findOrderStorageKeys(extraKeys).forEach(function (storageKey) {
+      if (patchOrderRowsInKey(storageKey, orderId, nextStatus, updatedAt)) changed = true;
+    });
+    if (patchQueueByOrderId(orderId, nextStatus, updatedAt)) changed = true;
+    if (patchPurchasesByOrderId(orderId, nextStatus, updatedAt)) changed = true;
+    if (patchSnapshotsByOrderId(orderId, nextStatus, updatedAt)) changed = true;
+    if (!changed) return false;
 
     log("order_status_changed", {
-      index: index,
-      id: orders[index].id || "-",
-      from: prev,
-      to: orders[index].status
+      target: target,
+      id: orderId,
+      from: prevStatus,
+      to: nextStatus
     });
 
     return true;

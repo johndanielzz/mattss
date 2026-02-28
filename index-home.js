@@ -16,6 +16,24 @@
     LATEST: 'latestProductsCache'
   };
 
+  const BUYER_SCOPE_PREFIX = '__mm_buyer__';
+  const SCOPED_KEYS = new Set([
+    KEYS.CART,
+    KEYS.CART_ITEMS,
+    KEYS.CHECKOUT_CART,
+    KEYS.CHECKOUT_META,
+    KEYS.WISHLIST,
+    KEYS.RECENT,
+    KEYS.COMPARE,
+    KEYS.PREFS
+  ]);
+  const LEGACY_READ_THROUGH_KEYS = new Set([
+    KEYS.CART,
+    KEYS.CART_ITEMS,
+    KEYS.CHECKOUT_CART,
+    KEYS.CHECKOUT_META
+  ]);
+
   const REMOTE = {
     apiKey: 'AIzaSyAUtHIWT6yZ8lHVShZNdQpDEXi_M8Zuo7I',
     dbUrl: 'https://matrixmarket-f72e0-default-rtdb.firebaseio.com',
@@ -45,6 +63,7 @@
   let searchTimer = null;
   let booted = false;
   let remoteFallbackBusy = false;
+  let cachedUserScope = null;
 
   function byId(id) { return document.getElementById(id); }
   function num(v) { const n = Number(v); return Number.isFinite(n) ? n : 0; }
@@ -72,9 +91,8 @@
     };
   }
 
-  function read(key, fallback) {
+  function parseStoredJson(raw, fallback) {
     try {
-      const raw = getStorageAdapter().getItem(key);
       if (raw == null || raw === '') return fallback;
       const parsed = JSON.parse(raw);
       return parsed == null ? fallback : parsed;
@@ -83,9 +101,99 @@
     }
   }
 
+  function normalizeScopeToken(raw) {
+    const token = str(raw).trim().toLowerCase();
+    if (!token) return '';
+    return token.replace(/[^a-z0-9._:@-]+/g, '_');
+  }
+
+  function resolveUserScopeToken() {
+    const adapter = getStorageAdapter();
+    const current = parseStoredJson(adapter.getItem(KEYS.USER), null) || parseStoredJson(adapter.getItem('loggedInUser'), null) || {};
+    const email = normalizeScopeToken(current && current.email);
+    if (email) return email;
+    const uid = normalizeScopeToken(current && (current.id || current.uid || current.userId));
+    if (uid) return 'id_' + uid;
+    const phone = normalizeScopeToken(current && current.phone);
+    if (phone) return 'phone_' + phone;
+    const name = normalizeScopeToken(current && (current.username || current.name || current.fullName));
+    if (name) return 'name_' + name;
+    return 'guest';
+  }
+
+  function userScopeToken() {
+    if (cachedUserScope) return cachedUserScope;
+    cachedUserScope = resolveUserScopeToken();
+    return cachedUserScope;
+  }
+
+  function invalidateUserScopeToken() {
+    cachedUserScope = null;
+  }
+
+  function shouldUseScopedKey(key) {
+    return SCOPED_KEYS.has(str(key));
+  }
+
+  function scopedStorageKey(key) {
+    return BUYER_SCOPE_PREFIX + userScopeToken() + '__' + str(key);
+  }
+
+  function guestScopedStorageKey(key) {
+    return BUYER_SCOPE_PREFIX + 'guest__' + str(key);
+  }
+
+  function readParsedValue(storageKey, fallback) {
+    return parseStoredJson(getStorageAdapter().getItem(storageKey), fallback);
+  }
+
+  function keyMatchesStorageEvent(actualKey, logicalKey) {
+    const key = str(actualKey);
+    const logical = str(logicalKey);
+    if (!key || !logical) return false;
+    if (key === logical) return true;
+    if (key === scopedStorageKey(logical)) return true;
+    return key.indexOf(BUYER_SCOPE_PREFIX) === 0 && key.endsWith('__' + logical);
+  }
+
+  function read(key, fallback) {
+    try {
+      if (shouldUseScopedKey(key)) {
+        const scoped = readParsedValue(scopedStorageKey(key), null);
+        if (scoped != null) return scoped;
+        if (LEGACY_READ_THROUGH_KEYS.has(str(key))) {
+          const guestScoped = readParsedValue(guestScopedStorageKey(key), null);
+          if (guestScoped != null) return guestScoped;
+          return readParsedValue(key, fallback);
+        }
+        if (userScopeToken() !== 'guest') return fallback;
+      }
+      return readParsedValue(key, fallback);
+    } catch (_) {
+      return fallback;
+    }
+  }
+
   function write(key, value) {
     try {
-      getStorageAdapter().setItem(key, JSON.stringify(value));
+      const storageKey = shouldUseScopedKey(key) ? scopedStorageKey(key) : key;
+      getStorageAdapter().setItem(storageKey, JSON.stringify(value));
+    } catch (_) {}
+  }
+
+  function writeCartBridge(rows) {
+    try {
+      const cartRows = Array.isArray(rows) ? rows.slice(0, 120) : [];
+      let payload = {};
+      try {
+        const parsed = JSON.parse(String(window.name || '').trim() || '{}');
+        if (parsed && typeof parsed === 'object') payload = parsed;
+      } catch (_) {}
+      payload.mmCartBridge = {
+        savedAt: new Date().toISOString(),
+        cart: cartRows
+      };
+      window.name = JSON.stringify(payload);
     } catch (_) {}
   }
 
@@ -312,6 +420,7 @@
   function writeCart(rows) {
     write(KEYS.CART, rows);
     write(KEYS.CART_ITEMS, rows);
+    writeCartBridge(rows);
   }
 
   function updateCartCount() {
@@ -1239,8 +1348,14 @@
     window.addEventListener('storage', function (e) {
       const key = e && typeof e.key === 'string' ? e.key : '';
       if (!key || key === 'products') refreshProducts(true);
-      if (key === KEYS.CART || key === KEYS.CART_ITEMS) updateCartCount();
-      if (!key || key === KEYS.USER || key === KEYS.USER_BALANCE || key === KEYS.BALANCE) updateHeaderUser();
+      if (keyMatchesStorageEvent(key, KEYS.CART) || keyMatchesStorageEvent(key, KEYS.CART_ITEMS)) updateCartCount();
+      if (!key || key === KEYS.USER || key === 'loggedInUser' || key === KEYS.USER_BALANCE || key === KEYS.BALANCE) {
+        invalidateUserScopeToken();
+        loadPrefs();
+        updateHeaderUser();
+        updateCartCount();
+        applyFilters(true);
+      }
     });
 
     document.addEventListener('keydown', function (e) {

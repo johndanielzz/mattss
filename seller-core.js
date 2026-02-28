@@ -2,18 +2,88 @@
   const SELLER_PAYMENT_ACCOUNT = "6785316";
   const SELLER_PAYMENT_METHODS = ["Wave", "Comcash"];
   const WITHDRAWAL_CHARGE_PER_10 = 2;
+  const BUYER_SCOPE_PREFIX = "__mm_buyer__";
 
-  function readJSON(key, fallback) {
+  function storageRef() {
+    if (window.MMStorage && typeof window.MMStorage.getItem === "function") return window.MMStorage;
     try {
-      const data = JSON.parse(MMStorage.getItem(key) || "null");
-      return data ?? fallback;
-    } catch (_err) {
-      return fallback;
+      if (window.localStorage && typeof window.localStorage.getItem === "function") return window.localStorage;
+    } catch (_) {}
+    return null;
+  }
+
+  function parseDeepJSON(raw, fallback) {
+    if (raw == null || raw === "") return fallback;
+    let value = raw;
+    for (let i = 0; i < 3; i += 1) {
+      if (typeof value !== "string") break;
+      const trimmed = value.trim();
+      if (!trimmed) return fallback;
+      try {
+        value = JSON.parse(trimmed);
+      } catch (_) {
+        return i === 0 ? fallback : value;
+      }
+    }
+    return value == null ? fallback : value;
+  }
+
+  function readRaw(key) {
+    const store = storageRef();
+    if (!store) return null;
+    try {
+      return store.getItem(String(key));
+    } catch (_) {
+      return null;
     }
   }
 
+  function writeRaw(key, value) {
+    const store = storageRef();
+    if (!store) return false;
+    try {
+      store.setItem(String(key), String(value == null ? "" : value));
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function listStorageKeys() {
+    const store = storageRef();
+    if (!store) return [];
+
+    if (typeof store.keys === "function") {
+      try {
+        const rows = store.keys();
+        if (Array.isArray(rows)) return rows.map(function (key) { return String(key); });
+      } catch (_) {}
+    }
+
+    const out = [];
+    const seen = new Set();
+    const total = Number(store.length);
+    if (!Number.isInteger(total) || total <= 0 || typeof store.key !== "function") return out;
+    for (let i = 0; i < total; i += 1) {
+      try {
+        const key = store.key(i);
+        if (key == null) continue;
+        const next = String(key);
+        if (!seen.has(next)) {
+          seen.add(next);
+          out.push(next);
+        }
+      } catch (_) {}
+    }
+    return out;
+  }
+
+  function readJSON(key, fallback) {
+    return parseDeepJSON(readRaw(key), fallback);
+  }
+
   function writeJSON(key, value) {
-    MMStorage.setItem(key, JSON.stringify(value));
+    writeRaw(key, JSON.stringify(value));
   }
 
   function num(v) {
@@ -945,7 +1015,7 @@
     ];
 
     return purchases.filter(function (p) {
-      const byEmail = cleanEmail(p.sellerEmail || "") === keys[0];
+      const byEmail = Boolean(keys[0]) && cleanEmail(p.sellerEmail || "") === keys[0];
       const byName = str(p.seller || p.sellerName || "").toLowerCase();
       return byEmail || (keys[1] && byName === keys[1]) || (keys[2] && byName === keys[2]);
     }).map(function (p) {
@@ -1000,6 +1070,129 @@
     return rows;
   }
 
+  function sameOrderId(a, b) {
+    const left = str(a).toLowerCase();
+    const right = str(b).toLowerCase();
+    return Boolean(left) && Boolean(right) && left === right;
+  }
+
+  function sellerIdentityKeys(seller) {
+    const s = seller || {};
+    return {
+      email: cleanEmail(s.email),
+      store: str(s.store || "").toLowerCase(),
+      name: str(s.fullName || s.name || "").toLowerCase()
+    };
+  }
+
+  function purchaseBelongsToSeller(row, keys) {
+    if (!row || typeof row !== "object") return false;
+    const byEmail = Boolean(keys.email) && cleanEmail(row.sellerEmail || "") === keys.email;
+    const byName = str(row.seller || row.sellerName || "").toLowerCase();
+    return byEmail || (keys.store && byName === keys.store) || (keys.name && byName === keys.name);
+  }
+
+  function isBuyerOrderStorageKey(key) {
+    const target = str(key);
+    if (!target) return false;
+    if (target === "buyerOrders") return true;
+    if (target.indexOf("buyerOrdersByEmail:") === 0) return true;
+    if (target.indexOf("buyerOrdersByPhone:") === 0) return true;
+    return target.indexOf(BUYER_SCOPE_PREFIX) === 0 && target.indexOf("__buyerOrders") > 0;
+  }
+
+  function addKeyUnique(list, key) {
+    const target = str(key);
+    if (!target) return;
+    if (!list.includes(target)) list.push(target);
+  }
+
+  function findOrderStorageKeys(extraKeys) {
+    const keys = [];
+    addKeyUnique(keys, "buyerOrders");
+    (Array.isArray(extraKeys) ? extraKeys : []).forEach(function (key) { addKeyUnique(keys, key); });
+    listStorageKeys().forEach(function (key) {
+      if (isBuyerOrderStorageKey(key)) addKeyUnique(keys, key);
+    });
+    return keys;
+  }
+
+  function patchOrderRowsInKey(storageKey, orderId, nextStatus, updatedAt) {
+    const rows = readJSON(storageKey, null);
+    if (!Array.isArray(rows) || !rows.length) return false;
+    let changed = false;
+    const nextRows = rows.map(function (row) {
+      const id = str(row && (row.id || row.orderId || row.orderNumber) || "");
+      if (!sameOrderId(id, orderId)) return row;
+      changed = true;
+      return { ...row, status: nextStatus, updatedAt: updatedAt };
+    });
+    if (!changed) return false;
+    return writeJSON(storageKey, nextRows);
+  }
+
+  function patchSnapshotsByOrderId(orderId, nextStatus, updatedAt) {
+    const mapKeys = ["orderLineSnapshots"];
+    listStorageKeys().forEach(function (key) {
+      if (key.indexOf(BUYER_SCOPE_PREFIX) === 0 && key.endsWith("__orderLineSnapshots")) addKeyUnique(mapKeys, key);
+    });
+
+    let changed = false;
+    mapKeys.forEach(function (storageKey) {
+      const map = readJSON(storageKey, null);
+      if (!map || typeof map !== "object" || Array.isArray(map)) return;
+      const hitKey = Object.keys(map).find(function (key) { return sameOrderId(key, orderId); });
+      if (!hitKey || !map[hitKey] || typeof map[hitKey] !== "object") return;
+      map[hitKey] = { ...map[hitKey], status: nextStatus, updatedAt: updatedAt };
+      if (writeJSON(storageKey, map)) changed = true;
+    });
+
+    const directKeys = ["orderItemsById:" + orderId];
+    listStorageKeys().forEach(function (key) {
+      if (key.indexOf(BUYER_SCOPE_PREFIX) !== 0) return;
+      if (sameOrderId(key.split("__orderItemsById:")[1], orderId)) addKeyUnique(directKeys, key);
+    });
+    directKeys.forEach(function (storageKey) {
+      const row = readJSON(storageKey, null);
+      if (!row || typeof row !== "object" || Array.isArray(row)) return;
+      const patched = { ...row, status: nextStatus, updatedAt: updatedAt };
+      if (writeJSON(storageKey, patched)) changed = true;
+    });
+
+    return changed;
+  }
+
+  function patchBuyerOrdersEverywhere(orderId, nextStatus, updatedAt, details) {
+    const info = details || {};
+    const extraKeys = [];
+    const byEmail = cleanEmail(info.email || "");
+    const byPhone = str(info.phone || "").replace(/\D+/g, "");
+    if (byEmail) addKeyUnique(extraKeys, "buyerOrdersByEmail:" + byEmail);
+    if (byPhone) addKeyUnique(extraKeys, "buyerOrdersByPhone:" + byPhone);
+
+    let changed = false;
+    findOrderStorageKeys(extraKeys).forEach(function (storageKey) {
+      if (patchOrderRowsInKey(storageKey, orderId, nextStatus, updatedAt)) changed = true;
+    });
+    if (patchSnapshotsByOrderId(orderId, nextStatus, updatedAt)) changed = true;
+    return changed;
+  }
+
+  function patchPurchasesStatusForSeller(seller, orderId, nextStatus, updatedAt) {
+    const rows = readJSON("purchases", []);
+    if (!Array.isArray(rows) || !rows.length) return false;
+    const keys = sellerIdentityKeys(seller);
+    let changed = false;
+    const nextRows = rows.map(function (row) {
+      const rowOrderId = str(row && (row.orderId || row.id || row.orderNumber) || "");
+      if (!sameOrderId(rowOrderId, orderId) || !purchaseBelongsToSeller(row, keys)) return row;
+      changed = true;
+      return { ...row, status: nextStatus, updatedAt: updatedAt };
+    });
+    if (!changed) return false;
+    return writeJSON("purchases", nextRows);
+  }
+
   function updateQueueStatus(seller, queueKey, index, nextStatus) {
     const s = seller || getCurrentSeller();
     if (!s) return false;
@@ -1008,20 +1201,29 @@
     if (!queues[queueKey] || !Array.isArray(queues[queueKey])) return false;
     if (!queues[queueKey][index]) return false;
 
-    queues[queueKey][index].status = str(nextStatus || "pending");
-    queues[queueKey][index].updatedAt = new Date().toISOString();
+    const row = queues[queueKey][index] || {};
+    const orderId = str(row.orderId || row.id || row.orderNumber || "");
+    const updatedAt = new Date().toISOString();
+    const normalizedStatus = str(nextStatus || "pending");
+
+    if (orderId) {
+      queues[queueKey] = queues[queueKey].map(function (entry, idx) {
+        if (idx === index) return { ...entry, status: normalizedStatus, updatedAt: updatedAt };
+        const entryOrderId = str(entry && (entry.orderId || entry.id || entry.orderNumber) || "");
+        if (!sameOrderId(entryOrderId, orderId)) return entry;
+        return { ...entry, status: normalizedStatus, updatedAt: updatedAt };
+      });
+    } else {
+      queues[queueKey][index] = { ...row, status: normalizedStatus, updatedAt: updatedAt };
+    }
     writeJSON("sellerOrderQueues", queues);
 
-    const orderId = str(queues[queueKey][index].orderId || "");
     if (orderId) {
-      const orders = readJSON("buyerOrders", []);
-      const updatedOrders = Array.isArray(orders) ? orders.map(function (o) {
-        if (str(o.id || "") === orderId) {
-          return { ...o, status: str(nextStatus || "pending"), updatedAt: new Date().toISOString() };
-        }
-        return o;
-      }) : [];
-      writeJSON("buyerOrders", updatedOrders);
+      patchBuyerOrdersEverywhere(orderId, normalizedStatus, updatedAt, {
+        email: row.email || row.buyerEmail || "",
+        phone: row.phone || row.buyerPhone || ""
+      });
+      patchPurchasesStatusForSeller(s, orderId, normalizedStatus, updatedAt);
     }
 
     return true;

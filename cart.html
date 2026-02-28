@@ -44,6 +44,22 @@
         .tool-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
         .tool-row label { font-size: .8rem; color: #6b7280; display: grid; gap: 4px; }
         @media (max-width: 900px) { .page { grid-template-columns: 1fr; } }
+        @media (max-width: 680px) {
+            header { align-items: flex-start; padding: 12px 10px; }
+            nav { width: 100%; overflow-x: auto; padding-bottom: 2px; }
+            nav a { white-space: nowrap; }
+            .tool-row { grid-template-columns: 1fr; }
+            .cart-item { grid-template-columns: 1fr; }
+            .cart-item img { width: 100%; height: 170px; }
+            .item-actions { grid-template-columns: 1fr 1fr; }
+            .foot-actions { display: grid; grid-template-columns: 1fr 1fr; }
+            .foot-actions .mini-btn,
+            .foot-actions a { width: 100%; justify-content: center; text-align: center; }
+        }
+        @media (max-width: 460px) {
+            .foot-actions { grid-template-columns: 1fr; }
+            .item-actions { grid-template-columns: 1fr; }
+        }
     </style>
     <link rel="stylesheet" href="upgrade.css">
     <script src="firebase-online-storage.js"></script>
@@ -136,6 +152,29 @@
             SAVE10: function (subtotal) { return Math.min(subtotal * 0.10, 500); },
             FREEDEL: function () { return 0; }
         };
+        const BUYER_SCOPE_PREFIX = "__mm_buyer__";
+        const SCOPED_KEYS = new Set([
+            "cart",
+            "cartItems",
+            "buyerInfo",
+            "buyerInfoDraft",
+            "checkoutCart",
+            "checkoutMeta",
+            "cartCoupon",
+            "cartDeliveryMode",
+            "lastCartSnapshot",
+            "marketplaceWishlist"
+        ]);
+        const LEGACY_READ_THROUGH_KEYS = new Set([
+            "cart",
+            "cartItems",
+            "checkoutCart",
+            "checkoutMeta",
+            "cartCoupon",
+            "cartDeliveryMode",
+            "lastCartSnapshot"
+        ]);
+        let cachedUserScope = null;
 
         function byId(id) { return document.getElementById(id); }
         const storage = (function () {
@@ -155,9 +194,83 @@
         function cleanPhone(v) { return String(v || "").replace(/\D+/g, ""); }
         function isValidEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || "").trim()); }
         function esc(v) { return String(v == null ? "" : v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
-        function rawGet(key) { try { return storage.getItem(key); } catch (_) { return null; } }
-        function rawSet(key, value) { try { storage.setItem(key, value); return true; } catch (_) { return false; } }
-        function rawRemove(key) { try { storage.removeItem(key); return true; } catch (_) { return false; } }
+        function parseStoredJson(raw, fallback) {
+            if (raw == null || raw === "") return fallback;
+            try {
+                const parsed = JSON.parse(raw);
+                return parsed == null ? fallback : parsed;
+            } catch (_) {
+                return fallback;
+            }
+        }
+        function normalizeScopeToken(value) {
+            const token = String(value == null ? "" : value).trim().toLowerCase();
+            if (!token) return "";
+            return token.replace(/[^a-z0-9._:@-]+/g, "_");
+        }
+        function resolveUserScopeToken() {
+            const user = parseStoredJson(storage.getItem("currentUser"), null) || parseStoredJson(storage.getItem("loggedInUser"), null) || {};
+            const email = normalizeScopeToken(user && user.email);
+            if (email) return email;
+            const uid = normalizeScopeToken(user && (user.id || user.uid || user.userId));
+            if (uid) return "id_" + uid;
+            const phone = normalizeScopeToken(user && user.phone);
+            if (phone) return "phone_" + phone;
+            const name = normalizeScopeToken(user && (user.username || user.name || user.fullName));
+            if (name) return "name_" + name;
+            return "guest";
+        }
+        function userScopeToken() {
+            if (cachedUserScope) return cachedUserScope;
+            cachedUserScope = resolveUserScopeToken();
+            return cachedUserScope;
+        }
+        function shouldScopeKey(key) {
+            return SCOPED_KEYS.has(String(key || ""));
+        }
+        function scopedStorageKey(key) {
+            return BUYER_SCOPE_PREFIX + userScopeToken() + "__" + String(key || "");
+        }
+        function guestScopedStorageKey(key) {
+            return BUYER_SCOPE_PREFIX + "guest__" + String(key || "");
+        }
+        function rawGet(key) {
+            const target = String(key || "");
+            try {
+                if (shouldScopeKey(target)) {
+                    const scoped = storage.getItem(scopedStorageKey(target));
+                    if (scoped != null && scoped !== "") return scoped;
+                    if (LEGACY_READ_THROUGH_KEYS.has(target)) {
+                        const guestScoped = storage.getItem(guestScopedStorageKey(target));
+                        if (guestScoped != null && guestScoped !== "") return guestScoped;
+                        const legacy = storage.getItem(target);
+                        if (legacy != null && legacy !== "") return legacy;
+                    }
+                    if (userScopeToken() !== "guest") return null;
+                }
+                return storage.getItem(target);
+            } catch (_) {
+                return null;
+            }
+        }
+        function rawSet(key, value) {
+            const target = String(key || "");
+            try {
+                storage.setItem(shouldScopeKey(target) ? scopedStorageKey(target) : target, value);
+                return true;
+            } catch (_) {
+                return false;
+            }
+        }
+        function rawRemove(key) {
+            const target = String(key || "");
+            try {
+                storage.removeItem(shouldScopeKey(target) ? scopedStorageKey(target) : target);
+                return true;
+            } catch (_) {
+                return false;
+            }
+        }
         function read(key, fallback) {
             try {
                 const data = JSON.parse(rawGet(key) || "null");
@@ -168,6 +281,54 @@
         }
         function write(key, value) {
             return rawSet(key, JSON.stringify(value));
+        }
+        function directReadJson(storageKey, fallback) {
+            try {
+                const raw = storage.getItem(storageKey);
+                if (raw == null || raw === "") return fallback;
+                const parsed = JSON.parse(raw);
+                return parsed ?? fallback;
+            } catch (_) {
+                return fallback;
+            }
+        }
+        function readBridgeCart() {
+            try {
+                const raw = String(window.name || "").trim();
+                if (!raw) return [];
+                const parsed = JSON.parse(raw);
+                if (!parsed || typeof parsed !== "object") return [];
+                const bridge = parsed.mmCartBridge;
+                if (!bridge || !Array.isArray(bridge.cart)) return [];
+                return normalizeCart(bridge.cart);
+            } catch (_) {
+                return [];
+            }
+        }
+        function recoverCartFromAnyKey() {
+            const bridgeRows = readBridgeCart();
+            if (bridgeRows.length) return bridgeRows;
+            const keyPool = [
+                scopedStorageKey("cart"),
+                scopedStorageKey("cartItems"),
+                scopedStorageKey("checkoutCart"),
+                guestScopedStorageKey("cart"),
+                guestScopedStorageKey("cartItems"),
+                guestScopedStorageKey("checkoutCart"),
+                "cart",
+                "cartItems",
+                "checkoutCart"
+            ];
+            const seen = new Set();
+            let best = [];
+            for (let i = 0; i < keyPool.length; i += 1) {
+                const key = String(keyPool[i] || "");
+                if (!key || seen.has(key)) continue;
+                seen.add(key);
+                const rows = normalizeCart(directReadJson(key, []));
+                if (rows.length > best.length) best = rows;
+            }
+            return best;
         }
 
         function wishlistKey(item) {
@@ -240,44 +401,66 @@
             write("cartItems", state.cart);
         }
 
+        function normalizeLiveProductRow(item, index) {
+            const row = item && typeof item === "object" ? item : {};
+            const stock = Math.max(0, Math.floor(num(row.stock || row.quantity || row.qty || 0)));
+            return {
+                id: String(row.id || row.productId || row.productKey || ("PRD-" + index)),
+                productId: String(row.productId || row.id || row.productKey || ("PRD-" + index)),
+                productKey: String(row.productKey || row.id || row.productId || ("PRD-" + index)),
+                name: String(row.name || row.title || "Product"),
+                seller: String(row.seller || row.sellerName || ""),
+                sellerEmail: String(row.sellerEmail || ""),
+                price: num(row.price || 0),
+                stock: stock,
+                image: String(row.image || ""),
+                category: String(row.category || "general")
+            };
+        }
+
         function loadLiveProducts() {
+            let rows = [];
             if (window.SellerCore && typeof window.SellerCore.getMarketplaceProducts === "function") {
-                state.liveProducts = window.SellerCore.getMarketplaceProducts({ includeOutOfStock: true, includeHidden: true });
-                return;
+                try {
+                    rows = window.SellerCore.getMarketplaceProducts({ includeOutOfStock: true, includeHidden: true });
+                } catch (_) {
+                    rows = [];
+                }
             }
             const fallback = read("products", []);
-            state.liveProducts = (Array.isArray(fallback) ? fallback : []).map(function (item, index) {
-                const stock = Math.max(0, Math.floor(num(item.stock || 0)));
-                return {
-                    id: String(item.id || ("PRD-" + index)),
-                    name: String(item.name || "Product"),
-                    seller: String(item.seller || item.sellerName || ""),
-                    sellerEmail: String(item.sellerEmail || ""),
-                    price: num(item.price || 0),
-                    stock: stock,
-                    image: String(item.image || ""),
-                    category: String(item.category || "general")
-                };
-            });
+            const fallbackRows = Array.isArray(fallback) ? fallback : [];
+            const merged = []
+                .concat(Array.isArray(rows) ? rows : [])
+                .concat(fallbackRows);
+            state.liveProducts = merged.map(normalizeLiveProductRow);
         }
 
         function matchLiveProduct(item) {
-            const id = String(item.id || "");
+            const id = String(item.id || item.productId || item.productKey || "");
             const name = String(item.name || "").toLowerCase();
             const seller = String(item.seller || "").toLowerCase();
             const sellerEmail = String(item.sellerEmail || "").toLowerCase();
             return state.liveProducts.find(function (product) {
-                if (id && String(product.id || "") === id) return true;
+                const pId = String(product.id || product.productId || product.productKey || "");
+                if (id && pId && pId === id) return true;
                 const pName = String(product.name || "").toLowerCase();
                 const pSeller = String(product.seller || product.sellerName || "").toLowerCase();
                 const pSellerEmail = String(product.sellerEmail || "").toLowerCase();
                 if (sellerEmail && pSellerEmail && sellerEmail === pSellerEmail && name === pName) return true;
+                if (name && pName === name && (!seller || seller === pSeller)) return true;
                 return name === pName && seller === pSeller;
             }) || null;
         }
 
         function syncCartWithStock() {
             loadLiveProducts();
+            if (!Array.isArray(state.liveProducts) || state.liveProducts.length === 0) {
+                const stockStatus = byId("stockStatus");
+                if (stockStatus) {
+                    stockStatus.textContent = "Stock service is unavailable right now. Showing your saved cart items.";
+                }
+                return;
+            }
             const notes = [];
             const next = [];
 
@@ -577,6 +760,15 @@
 
         function init() {
             state.cart = normalizeCart(read("cart", []));
+            if (!state.cart.length) {
+                const recovered = recoverCartFromAnyKey();
+                if (recovered.length) {
+                    state.cart = recovered;
+                    persistCart();
+                    const stockStatus = byId("stockStatus");
+                    if (stockStatus) stockStatus.textContent = "Recovered cart items from cached storage.";
+                }
+            }
             state.deliveryMode = rawGet("cartDeliveryMode") === "express" ? "express" : "standard";
             byId("deliveryMode").value = state.deliveryMode;
             syncCartWithStock();
