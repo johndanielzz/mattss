@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Profile | MAT LEADS AI PRO X</title>
+    <meta name="description" content="Manage your MAT LEADS AI PRO X account profile.">
+    <link rel="icon" href="/assets/logo-mark.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/css/style.css">
+  </head>
+  <body data-page="profile">
+    <div class="app-layout" data-app-shell>
+      <main class="workspace">
+        <section class="workspace-header">
+          <div><h1>Profile</h1><p>Workspace identity, sales signature, and account access.</p></div>
+          <button class="btn btn-secondary" type="button" data-logout>Logout</button>
+        </section>
+        <section class="detail-layout">
+          <form class="panel form-grid compact" id="profileForm" data-profile-form>
+            <div class="field"><label for="name">Name</label><input id="name" name="name" autocomplete="name" required></div>
+            <div class="field"><label for="email">Email</label><input id="email" name="email" type="email" autocomplete="email" readonly></div>
+            <div class="field"><label for="company">Company</label><input id="company" name="company" autocomplete="organization"></div>
+            <div class="field" style="grid-column:1 / -1;"><label for="signature">Sales Signature</label><textarea id="signature" name="signature"></textarea></div>
+            <button class="btn btn-primary" type="submit">Save Profile</button>
+            <div class="notice" data-profile-status role="status" style="grid-column:1 / -1;">Loading profile...</div>
+          </form>
+          <aside class="panel">
+            <h2>Session Management</h2>
+            <div class="audit-list" data-account-status>
+              <div class="skeleton">Loading account access...</div>
+            </div>
+          </aside>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="/components/layout.js"></script>
+    <script type="module" src="/js/app.js"></script>
+    <script type="module" src="/js/profile.js"></script>
+  </body>
+</html>

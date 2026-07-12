@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Lead Marketplace | MAT LEADS AI PRO X</title>
+    <meta name="description" content="Buy and sell verified business leads.">
+    <link rel="icon" href="/assets/logo-mark.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/css/style.css">
+  </head>
+  <body data-page="marketplace">
+    <div class="app-layout" data-app-shell>
+      <main class="workspace">
+        <section class="workspace-header">
+          <div><h1>Lead Marketplace</h1><p>Buy verified leads or sell your excess leads. Platform takes 30% commission.</p></div>
+          <div class="toolbar">
+            <span class="status-pill success" id="balanceDisplay">Balance: $0.00</span>
+          </div>
+        </section>
+
+        <section class="report-grid" id="marketplaceStats" style="margin-bottom:14px;">
+          <article class="metric"><span>Active Listings</span><strong id="statListings">-</strong></article>
+          <article class="metric"><span>Your Sold</span><strong id="statSold">-</strong></article>
+          <article class="metric"><span>You Earned</span><strong id="statEarned">-</strong></article>
+        </section>
+
+        <div class="toolbar" style="margin-bottom:14px;">
+          <input id="marketplaceSearch" placeholder="Search by business type..." style="flex:1;min-height:40px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text);">
+          <select id="marketplaceMinScore" style="min-height:40px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text);">
+            <option value="0">All Scores</option>
+            <option value="50">50+ Score</option>
+            <option value="70">70+ Score</option>
+            <option value="80">80+ Score</option>
+          </select>
+          <button class="btn btn-primary" type="button" id="refreshMarketplaceBtn">Refresh</button>
+        </div>
+
+        <section class="panel">
+          <h2>Available Leads</h2>
+          <div id="marketplaceListings">
+            <div class="skeleton">Loading marketplace...</div>
+          </div>
+          <div id="marketplacePagination" class="pagination-controls" style="margin-top:14px;"></div>
+        </section>
+
+        <p class="notice" role="status" style="margin-top:14px;" id="marketplaceStatus"></p>
+      </main>
+    </div>
+    <script type="module" src="/components/layout.js"></script>
+    <script type="module" src="/js/marketplace.js"></script>
+  </body>
+</html>

@@ -1,0 +1,69 @@
+{
+  "id": "/",
+  "name": "MAT LEADS AI PRO X",
+  "short_name": "MAT Leads",
+  "description": "Search local businesses, qualify website opportunities, and manage agency lead pipelines. Installable PWA with offline support.",
+  "start_url": "/dashboard.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f7f8fb",
+  "theme_color": "#101828",
+  "orientation": "any",
+  "categories": ["business", "productivity"],
+  "lang": "en",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/assets/logo-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/logo-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/assets/logo-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "form_factor": "wide",
+      "label": "MAT Leads Dashboard"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Search Leads",
+      "short_name": "Search",
+      "description": "Search for new business leads",
+      "url": "/dashboard.html",
+      "icons": [{ "src": "/assets/logo-mark.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "CRM",
+      "short_name": "CRM",
+      "description": "Manage your lead pipeline",
+      "url": "/crm.html",
+      "icons": [{ "src": "/assets/logo-mark.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Reports",
+      "short_name": "Reports",
+      "description": "View analytics and reports",
+      "url": "/reports.html",
+      "icons": [{ "src": "/assets/logo-mark.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Pricing",
+      "short_name": "Pricing",
+      "description": "View subscription plans",
+      "url": "/pricing.html",
+      "icons": [{ "src": "/assets/logo-mark.svg", "sizes": "any", "type": "image/svg+xml" }]
+    }
+  ]
+}

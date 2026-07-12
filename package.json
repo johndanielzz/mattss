@@ -1,0 +1,17 @@
+{
+  "name": "mat-leads-ai-pro-x",
+  "version": "1.0.0",
+  "description": "Enterprise Google Maps lead generation SaaS with NVIDIA-powered AI analysis.",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "node api/server.js",
+    "start": "node api/server.js",
+    "check": "node --check api/index.js && node --check api/server.js && node --check api/nativeApp.js && node --check js/app.js && node --check js/api.js && node --check js/leads.js && node --check js/crm.js && node --check js/dashboard.js && node --check js/pricing.js && node --check js/profile.js && node --check js/billing-success.js && node --check js/admin.js && node --check js/settings.js && node --check js/ai-console.js && node --check js/client-report.js",
+    "smoke": "node utils/smoke-test.js"
+  },
+  "dependencies": {}
+}

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Analytics | MAT LEADS AI PRO X</title>
+    <meta name="description" content="Analyze lead volume, saved leads, contacted leads, won deals, estimated revenue, conversion, and growth.">
+    <link rel="icon" href="/assets/logo-mark.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/css/style.css">
+  </head>
+  <body data-page="analytics">
+    <div class="app-layout" data-app-shell>
+      <main class="workspace">
+        <section class="workspace-header">
+          <div><h1>Analytics</h1><p>Lead acquisition, conversion, revenue, usage, and campaign performance.</p></div>
+          <a class="btn btn-secondary" href="/dashboard.html">Search More</a>
+        </section>
+        <section class="metrics-grid" id="dashboardMetrics" aria-live="polite"></section>
+        <section class="detail-layout" style="margin-top:14px;">
+          <article class="panel">
+            <h2>Monthly Growth</h2>
+            <div class="chart" id="growthChart"></div>
+          </article>
+          <article class="panel">
+            <h2>Funnel Health</h2>
+            <div class="chart">
+              <div class="bar-row"><span>Saved</span><div class="bar-track"><div class="bar-fill" style="width:80%"></div></div><strong>80%</strong></div>
+              <div class="bar-row"><span>Contacted</span><div class="bar-track"><div class="bar-fill" style="width:52%"></div></div><strong>52%</strong></div>
+              <div class="bar-row"><span>Proposal</span><div class="bar-track"><div class="bar-fill" style="width:31%"></div></div><strong>31%</strong></div>
+              <div class="bar-row"><span>Won</span><div class="bar-track"><div class="bar-fill" style="width:14%"></div></div><strong>14%</strong></div>
+            </div>
+          </article>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="/components/layout.js"></script>
+    <script type="module" src="/js/dashboard.js"></script>
+  </body>
+</html>

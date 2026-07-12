@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Admin | MAT LEADS AI PRO X</title>
+    <meta name="description" content="Admin panel for users, subscriptions, revenue, API usage, monitoring, and audit logs.">
+    <link rel="icon" href="/assets/logo-mark.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/css/style.css">
+  </head>
+  <body data-page="admin">
+    <div class="app-layout" data-app-shell>
+      <main class="workspace">
+        <section class="workspace-header">
+          <div><h1>Admin Panel</h1><p>User management, subscriptions, revenue, API usage, monitoring, and audit logs.</p></div>
+          <span class="status-pill success">System online</span>
+        </section>
+        <section class="admin-grid" id="adminMetrics" aria-live="polite"></section>
+        <section class="panel" style="margin-top:14px;">
+          <h2>Integrations</h2>
+          <div class="audit-list" id="integrationStatus">
+            <div class="skeleton">Checking live providers...</div>
+          </div>
+          <p class="notice" id="missingConfig" style="margin-top:12px;">Checking required production configuration...</p>
+        </section>
+        <section class="panel" style="margin-top:14px;">
+          <h2>Audit Logs</h2>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>IP</th></tr></thead>
+              <tbody id="auditLogs"></tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="/components/layout.js"></script>
+    <script type="module" src="/js/admin.js"></script>
+  </body>
+</html>

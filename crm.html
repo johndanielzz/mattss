@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CRM | MAT LEADS AI PRO X</title>
+    <meta name="description" content="Manage lead stages, notes, activity logs, reminders, and agency sales pipeline.">
+    <link rel="icon" href="/assets/logo-mark.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/css/style.css">
+  </head>
+  <body data-page="crm">
+    <div class="app-layout" data-app-shell>
+      <main class="workspace">
+        <section class="workspace-header">
+          <div>
+            <h1>CRM Pipeline</h1>
+            <p>Track every lead from discovery to won revenue.</p>
+          </div>
+          <a class="btn btn-primary" href="/dashboard.html">Add Leads</a>
+        </section>
+        <section class="pipeline" id="pipeline" aria-live="polite"></section>
+      </main>
+    </div>
+    <script type="module" src="/components/layout.js"></script>
+    <script type="module" src="/js/crm.js"></script>
+  </body>
+</html>

@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Reports | MAT LEADS AI PRO X</title>
+    <meta name="description" content="Generate website audits, SEO reports, proposal reports, and revenue opportunity reports.">
+    <link rel="icon" href="/assets/logo-mark.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/css/style.css">
+  </head>
+  <body data-page="reports">
+    <div class="app-layout" data-app-shell>
+      <main class="workspace">
+        <section class="workspace-header">
+          <div><h1>Reports</h1><p>Business audit reports, SEO findings, competitor notes, and proposal-ready summaries.</p></div>
+          <a class="btn btn-primary" href="/lead-details.html">Generate Report</a>
+        </section>
+        <section class="report-grid">
+          <article class="panel" style="grid-column:1 / -1;">
+            <h2>AI Console</h2>
+            <form id="aiConsoleForm" class="form-grid compact">
+              <div class="field" style="grid-column:1 / -1;">
+                <label for="prompt">Prompt</label>
+                <textarea id="prompt" name="prompt" required>Write a concise cold email for a local business that has no website and needs a modern web presence.</textarea>
+              </div>
+              <button class="btn btn-primary" type="submit">Run AI</button>
+            </form>
+            <div id="aiConsoleOutput" class="notice" style="margin-top:14px;">Ready for real reports.</div>
+          </article>
+          <article class="panel"><h2>Website Audit</h2><p>HTTPS, metadata, mobile viewport, forms, social links, and speed signals.</p></article>
+          <article class="panel"><h2>SEO Audit</h2><p>Title, description, heading structure, local intent, and conversion gaps.</p></article>
+          <article class="panel"><h2>Proposal Pack</h2><p>Website redesign, SEO, AI chatbot, marketing, CRM, and automation proposal drafts.</p></article>
+          <article class="panel"><h2>Client Report Portal</h2><p>Lead-specific report pages with proposal, ROI, competitive gaps, and print-ready client presentation flow.</p></article>
+          <article class="panel"><h2>AI Sales Agent</h2><p>Next-best actions, call scripts, objection handling, and multi-day outreach sequences for every qualified lead.</p></article>
+          <article class="panel"><h2>Verified Contact Finder</h2><p>Owner, social, website, WhatsApp, phone, email, and search verification steps inside each lead dossier.</p></article>
+          <article class="panel"><h2>Competitor Analysis</h2><p>Positioning notes and service opportunities for nearby businesses.</p></article>
+          <article class="panel"><h2>Revenue Forecast</h2><p>Lead value, expected close rate, service package, monthly upside, break-even, and 12-month pipeline impact.</p></article>
+          <article class="panel"><h2>White Label Reports</h2><p>Brand name, booking URL, primary offer, proposal price, and follow-up cadence are configured from Settings.</p></article>
+          <article class="panel"><h2>Export Queue</h2><p>PDF-ready report structure with user, lead, and audit history attached.</p></article>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="/components/layout.js"></script>
+    <script type="module" src="/js/ai-console.js"></script>
+  </body>
+</html>

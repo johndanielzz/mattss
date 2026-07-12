@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Client Report | MAT LEADS AI PRO X</title>
+    <meta name="description" content="Client-ready website, local SEO, proposal, and ROI report for a qualified business lead.">
+    <link rel="icon" href="/assets/logo-mark.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/css/style.css">
+  </head>
+  <body data-page="reports">
+    <div class="app-layout" data-app-shell>
+      <main class="workspace">
+        <section class="workspace-header">
+          <div>
+            <h1>Client Report</h1>
+            <p>Proposal-ready audit, ROI estimate, and growth plan for one lead.</p>
+          </div>
+          <div class="toolbar">
+            <button class="btn btn-secondary" type="button" data-copy-client-report>Copy Report</button>
+            <button class="btn btn-primary" type="button" data-print-client-report>Print</button>
+          </div>
+        </section>
+        <section class="report-grid" id="clientReport" aria-live="polite">
+          <div class="skeleton">Loading client report...</div>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="/components/layout.js"></script>
+    <script type="module" src="/js/client-report.js"></script>
+  </body>
+</html>

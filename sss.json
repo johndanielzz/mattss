@@ -1,0 +1,40 @@
+{
+  "users": {
+    "owner": {
+      "uid": "owner",
+      "name": "Owner",
+      "email": "owner@matleads.local",
+      "role": "admin",
+      "subscription": "enterprise",
+      "billingStatus": "owner_free",
+      "monthlyLeadLimit": null,
+      "permissions": [],
+      "entitlements": {
+        "activePlan": true,
+        "unlimitedAccess": true,
+        "featuresUnlocked": ["Lead Search","CRM","Reports","Analytics","Admin","AI","Billing","Settings"]
+      }
+    }
+  },
+  "marketplaceListings": {
+    "example": {
+      "sellerId": "owner",
+      "leadName": "Example Business",
+      "leadBusinessType": "Restaurant",
+      "leadPhone": "+1234567890",
+      "leadEmail": "business@example.com",
+      "leadScore": 75,
+      "priceCents": 499,
+      "priceDollars": "4.99",
+      "status": "active"
+    }
+  },
+  "campaigns": {},
+  "marketplaceTransactions": {},
+  "promoUsages": {},
+  "creditTransactions": {},
+  "weeklySubscriptions": {},
+  "activities": {},
+  "auditLogs": {},
+  "leads": {}
+}

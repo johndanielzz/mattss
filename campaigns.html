@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AI Campaigns | MAT LEADS AI PRO X</title>
+    <meta name="description" content="Launch AI-powered email outreach campaigns to your leads.">
+    <link rel="icon" href="/assets/logo-mark.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/css/style.css">
+  </head>
+  <body data-page="campaigns">
+    <div class="app-layout" data-app-shell>
+      <main class="workspace">
+        <section class="workspace-header">
+          <div><h1>AI Campaigns</h1><p>Create and launch AI-powered email outreach campaigns to your leads.</p></div>
+          <button class="btn btn-primary" type="button" id="newCampaignBtn">+ New Campaign</button>
+        </section>
+
+        <section class="report-grid" id="campaignStats" style="margin-bottom:14px;">
+          <article class="metric"><span>Total Campaigns</span><strong id="statTotal">-</strong></article>
+          <article class="metric"><span>Emails Sent</span><strong id="statSent">-</strong></article>
+          <article class="metric"><span>Reply Rate</span><strong id="statReplies">-</strong></article>
+        </section>
+
+        <section class="panel" id="campaignListPanel">
+          <h2>Your Campaigns</h2>
+          <div id="campaignList">
+            <div class="skeleton">Loading campaigns...</div>
+          </div>
+        </section>
+
+        <!-- New Campaign Modal -->
+        <div id="campaignModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100;align-items:center;justify-content:center;">
+          <div class="panel" style="max-width:700px;width:90%;max-height:90vh;overflow-y:auto;">
+            <h2 id="modalTitle">New Campaign</h2>
+            <div class="form-grid compact">
+              <div class="field" style="grid-column:1 / -1;">
+                <label for="campaignName">Campaign Name</label>
+                <input id="campaignName" maxlength="120" placeholder="Q1 Outreach - Roofers">
+              </div>
+              <div class="field" style="grid-column:1 / -1;">
+                <label for="campaignSubject">Email Subject Line</label>
+                <input id="campaignSubject" maxlength="200" placeholder="Quick website idea for {name}">
+              </div>
+              <div class="field" style="grid-column:1 / -1;">
+                <label for="campaignTemplate">Email Template</label>
+                <textarea id="campaignTemplate" rows="8" placeholder="Use {name}, {business}, {phone}, {website}, {sender} as placeholders."></textarea>
+                <button class="btn btn-secondary" type="button" id="generateTemplateBtn" style="margin-top:6px;">🤖 Generate with AI</button>
+              </div>
+              <div class="field" style="grid-column:1 / -1;">
+                <label>Select Leads (with email addresses)</label>
+                <div id="leadSelector" style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);padding:8px;">
+                  <div class="skeleton">Loading leads...</div>
+                </div>
+              </div>
+              <div class="field" style="grid-column:1 / -1;display:flex;gap:8px;justify-content:end;">
+                <button class="btn btn-secondary" type="button" id="cancelCampaignBtn">Cancel</button>
+                <button class="btn btn-primary" type="button" id="saveCampaignBtn">Create Campaign</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="notice" role="status" style="margin-top:14px;" id="campaignStatus"></p>
+      </main>
+    </div>
+    <script type="module" src="/components/layout.js"></script>
+    <script type="module" src="/js/campaigns.js"></script>
+  </body>
+</html>

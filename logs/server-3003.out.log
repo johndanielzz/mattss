@@ -1,0 +1,5 @@
+
+> mat-leads-ai-pro-x@1.0.0 dev
+> node api/server.js
+
+{"level":"info","event":"server_started","url":"http://localhost:3003","at":"2026-06-08T07:50:28.369Z"}
